@@ -596,9 +596,13 @@ class wl_shm : public wl_obj {
     Use-case example
 */
 
+bool has_configured = false;
+bool has_attached_buffer = false;
+
 struct xdg_surface::listener xdg_surface_listener {
     .configure = [](xdg_surface& surface, int serial) {
         surface.ack_configure(serial);
+        has_configured = true;
     }
 };
 
@@ -706,10 +710,13 @@ int main() {
 
     surface->commit(display.socket);
 
-    surface->attach(display.socket, buffer, 0, 0);
-    surface->commit(display.socket);
-
     while (true) {
+        if (has_configured && !has_attached_buffer) {
+            surface->attach(display.socket, buffer, 0, 0);
+            surface->commit(display.socket);
+            has_attached_buffer = true;
+        }
+        
         std::cout << "Loop\n";
         display.roundtrip();
     }    

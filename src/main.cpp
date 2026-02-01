@@ -427,6 +427,11 @@ class xdg_toplevel : public wl_obj {
     static constexpr wl_uint UNSET_FULLSCREEN_OPCODE = 12;
     static constexpr wl_uint SET_MINIMISED_OPCODE = 13;
 
+    static constexpr wl_uint EV_CONFIGURE_OPCODE = 0;
+    static constexpr wl_uint EV_CLOSE_OPCODE = 1;
+    static constexpr wl_uint EV_CONFIGURE_BOUNDS_OPCODE = 2;
+    static constexpr wl_uint EV_WM_CAPABILITIES_OPCODE = 3;
+
     public:
 
     struct listener {
@@ -449,15 +454,23 @@ class xdg_toplevel : public wl_obj {
             throw std::runtime_error("No event listener supplied for xdg_toplevel");
         }
 
-        if (opcode == 0) {
+        if (opcode == EV_CONFIGURE_OPCODE) {
             listener->configure(read_wl_int(data), read_wl_int((char*)data + 4));
-        } else if (opcode == 1) {
+        } else if (opcode == EV_CLOSE_OPCODE) {
             listener->close();
-        } else if (opcode == 2) {
+        } else if (opcode == EV_CONFIGURE_BOUNDS_OPCODE) {
             listener->configure_bounds(read_wl_int(data), read_wl_int((char*)data + 4));
-        } else if (opcode == 3) {
+        } else if (opcode == EV_WM_CAPABILITIES_OPCODE) {
             listener->wm_capabilities();
         }
+    }
+
+    void destroy() {
+        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+    }
+
+    void set_parent(const wl_object parent) {
+        
     }
 
     void set_title(const char* title) {
@@ -465,6 +478,27 @@ class xdg_toplevel : public wl_obj {
 
         WaylandMessage client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
         client_msg.Write(str);
+    }
+
+    void set_app_id(const wl_string& app_id) {
+        
+    }
+
+    void set_maximised() {
+        WaylandMessage client_msg(send_queue_alloc, id, SET_MAXIMISED_OPCODE, 0);
+    }
+
+    void unset_maximised() {
+        WaylandMessage client_msg(send_queue_alloc, id, UNSET_MAXIMISED_OPCODE, 0);
+    }
+
+    void set_fullscreen(const wl_object output) {
+        WaylandMessage client_msg(send_queue_alloc, id, SET_FULLSCREEN_OPCODE, 1);
+        client_msg.Write(output);
+    }
+
+    void unset_fullscreen() {
+        WaylandMessage client_msg(send_queue_alloc, id, UNSET_FULLSCREEN_OPCODE, 0);
     }
 };
 
@@ -978,6 +1012,8 @@ void on_global_registered(wl_registry& registry, const WaylandGlobal& global) {
         std::cout << "SUPPORTS OLD SHELL INTERFACE\n";
     }
 
+    std::cout << global.interface << '\n';
+
     if (global.interface.Compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();
         registry.bind(global.name, global.interface, global.version, id);
@@ -1033,6 +1069,7 @@ int main() {
     toplevel->listener = &xdg_toplevel_listener;
 
     toplevel->set_title("Test Application");
+    toplevel->set_maximised();
 
     display.dispatch_pending();
 
@@ -1040,6 +1077,8 @@ int main() {
     mouse->listener = &wl_mouse_listener;
     
     framebuffer = Framebuffer(200, 200);
+
+    
 
     while (true) {
         display.roundtrip();

@@ -43,6 +43,10 @@ inline wl_object read_wl_object(const void* data) {
     return *reinterpret_cast<const wl_object*>(data);
 }
 
+inline wl_fixed read_wl_fixed(const void* data) {
+    return *reinterpret_cast<const wl_fixed*>(data);
+}
+
 template<class T>
 void from_wl(const T val, void* data) {
     memcpy(data, reinterpret_cast<const char*>(&val), WL_NEW_ID_SIZE);

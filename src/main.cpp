@@ -679,6 +679,147 @@ class wl_shm : public wl_obj {
     }
 };
 
+
+/**
+    @brief Keyboard
+*/
+class wl_keyboard : public wl_obj {
+    wl_object id;
+
+    public:
+
+    struct listener {
+        
+    };
+
+    listener* listener = nullptr;
+
+    wl_keyboard(const wl_new_id id) : id(id) {
+
+    }
+
+    wl_object ID() const noexcept override {
+        return id;
+    }
+
+    void handle_event(uint16_t opcode, void *data, size_t size) override {
+        if (!listener) {
+            throw std::runtime_error("No listener supplied for wl_seat.");
+        }
+    }
+};
+
+/**
+    @brief Mouse
+*/
+class wl_mouse : public wl_obj {
+    wl_object id;
+
+    static constexpr wl_uint EV_ENTER_OPCODE = 0;
+    static constexpr wl_uint EV_LEAVE_OPCODE = 1;
+    static constexpr wl_uint EV_MOTION_OPCODE = 2;
+    static constexpr wl_uint EV_BUTTON_OPCODE = 3;
+    static constexpr wl_uint EV_AXIS_OPCODE = 4;
+    static constexpr wl_uint EV_FRAME_OPCODE = 5;
+    static constexpr wl_uint EV_AXIS_SOURCE_OPCODE = 6;
+    static constexpr wl_uint EV_AXIS_STOP_OPCODE = 7;
+    static constexpr wl_uint EV_AXIS_DISCRETE_OPCODE = 8;
+    static constexpr wl_uint EV_AXIS_VALUE120_OPCODE = 9;
+    static constexpr wl_uint EV_AXIS_RELATIVE_DIRECTION_OPCODE = 10;
+
+    public:
+
+    struct listener {
+        void (*enter)(wl_uint serial, wl_object surface, wl_fixed surface_x, wl_fixed surface_y);
+        void (*leave)(wl_uint serial, wl_object surface);
+        void (*motion)(wl_uint serial, wl_fixed surface_x, wl_fixed surface_y);
+    };
+
+    listener* listener = nullptr;
+
+    wl_mouse(const wl_new_id id) : id(id) {
+
+    }
+
+    wl_object ID() const noexcept override {
+        return id;
+    }
+
+    void handle_event(uint16_t opcode, void *data, size_t size) override {
+        if (!listener) {
+            throw std::runtime_error("No listener supplied for wl_mouse.");
+        }
+
+        if (opcode == EV_ENTER_OPCODE) {
+            listener->enter(
+                read_wl_uint(data),
+                read_wl_object((char*)data + 4),
+                read_wl_fixed((char*)data + 8),
+                read_wl_fixed((char*)data + 12)
+            );
+        } else if (opcode == EV_LEAVE_OPCODE) {
+            listener->leave(
+                read_wl_uint(data),
+                read_wl_object((char*)data + 4)
+            );
+        } else if (opcode == EV_MOTION_OPCODE) {
+            listener->motion(
+                read_wl_uint(data),
+                read_wl_fixed((char*)data + 4),
+                read_wl_fixed((char*)data + 8)
+            );
+        }
+    }
+};
+
+/**
+    @brief Group of input devices
+*/
+class wl_seat : public wl_obj {
+    wl_object id;
+
+    public:
+
+    struct listener {
+        
+    };
+
+    listener* listener = nullptr;
+
+    wl_seat(const wl_new_id id) : id(id) {
+
+    }
+
+    wl_object ID() const noexcept override {
+        return id;
+    }
+
+    void handle_event(uint16_t opcode, void *data, size_t size) override {
+        if (!listener) {
+            throw std::runtime_error("No listener supplied for wl_seat.");
+        }
+    }
+
+    wl_mouse* get_mouse() {
+        wl_mouse* mouse = new wl_mouse(wl_id_assigner.get_id());
+
+        WaylandMessage client_msg(send_queue_alloc, id, 0, 1);
+        client_msg.Write(mouse->ID());
+
+        wl_id_map.create(*mouse);
+
+        return mouse;
+    }
+
+    void get_keyboard() {
+        
+    }
+
+    void release() {
+        
+    }
+};
+
 /**
     Use-case example
 */
@@ -686,6 +827,7 @@ class wl_shm : public wl_obj {
 wl_display display;
 wl_surface* surface;
 wl_shm* shm;
+wl_seat* seat;
 
 int resizes = 0;
 
@@ -776,37 +918,6 @@ struct Framebuffer {
 
 Framebuffer framebuffer;
 
-void recreate_buffer(wl_int width, wl_int height) {
-    /*if (buffer) {
-        buffer->destroy();
-        buffer = nullptr;
-    }
-
-    if (pool) {
-        pool->destroy();
-        pool = nullptr;
-    }
-
-    const size_t new_size = width * height * 4;
-
-    fd = syscall(SYS_memfd_create, "buffer", 0);
-
-    if (fd < 0) {
-        throw std::runtime_error("Failed to create buffer file");
-    }
-
-    ftruncate(fd, new_size);
-
-    pool = shm->create_pool(display.socket, fd, new_size);
-    buffer = pool->create_buffer(display.socket, 0, width, height, 4, 0);
-    wl_id_map.create(*buffer);
-    surface->commit(display.socket);
-    surface->attach(display.socket, *buffer, 0, 0);
-    surface->commit(display.socket);*/
-
-    //create_buffer(width, height);
-}
-
 bool has_configured = false;
 bool has_resized_buffer = false;
 
@@ -822,7 +933,7 @@ struct xdg_surface::listener xdg_surface_listener {
 
 struct xdg_toplevel::listener xdg_toplevel_listener {
     .configure = [](const wl_int x, const wl_int y) {
-        if (x == 0 || y == 0) {
+        if ((wl_uint)x == 0 || (wl_uint)y == 0) {
             return;
         } 
 
@@ -843,10 +954,30 @@ struct xdg_toplevel::listener xdg_toplevel_listener {
     },
 };
 
+struct wl_seat::listener wl_seat_listener {
+    
+};
+
+struct wl_mouse::listener wl_mouse_listener {
+    .enter = [](wl_uint serial, wl_object surface, wl_fixed surface_x, wl_fixed surface_y) {
+        
+    },
+    .leave = [](wl_uint serial, wl_object surface) {
+        
+    },
+    .motion = [](wl_uint serial, wl_fixed surface_x, wl_fixed surface_y) {
+        
+    },
+};
+
 wl_compositor compositor(0);
 xdg_wm_base* wm_base;
 
 void on_global_registered(wl_registry& registry, const WaylandGlobal& global) {
+    if (global.interface.Compare("wl_shell_surface") == 0) {
+        std::cout << "SUPPORTS OLD SHELL INTERFACE\n";
+    }
+
     if (global.interface.Compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();
         registry.bind(global.name, global.interface, global.version, id);
@@ -861,6 +992,11 @@ void on_global_registered(wl_registry& registry, const WaylandGlobal& global) {
         registry.bind(global.name, global.interface, global.version, id);
         wm_base = new xdg_wm_base(id);
         wl_id_map.create(*wm_base);
+    } else if (global.interface.Compare("wl_seat") == 0) {
+        const wl_new_id id = wl_id_assigner.get_id();
+        registry.bind(global.name, global.interface, global.version, id);
+        seat = new wl_seat(id);
+        wl_id_map.create(*seat);
     }
 }
 
@@ -883,6 +1019,7 @@ int main() {
     display.roundtrip();
 
     shm->listener = &wl_shm_listener;
+    seat->listener = &wl_seat_listener;
 
     surface = compositor.create_surface(display.socket);
     wl_id_map.create(*surface);
@@ -898,6 +1035,9 @@ int main() {
     toplevel->set_title("Test Application");
 
     display.dispatch_pending();
+
+    wl_mouse* mouse = seat->get_mouse();
+    mouse->listener = &wl_mouse_listener;
     
     framebuffer = Framebuffer(200, 200);
 

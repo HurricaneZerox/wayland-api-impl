@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cstring>
 
+using fd_t = uintmax_t;
+
 /**
     Type definitions for Wayland's protocol-defined
     types.
@@ -30,6 +32,9 @@ using wl_uint16 = uint16_t;
 #define WL_OBJECT_SIZE sizeof(wl_object)
 #define WL_NEW_ID_SIZE sizeof(wl_new_id)
 #define WL_WORD_SIZE 4
+
+#define WL_NEW_ID_MIN 2
+#define WL_NEW_ID_MAX 0xFEFFFFFF
 
 inline wl_int read_wl_int(const void* data) {
     return *reinterpret_cast<const wl_int*>(data);
@@ -75,3 +80,15 @@ inline uintmax_t wl_align(const uintmax_t addr) {
 inline uintmax_t wl_align(const char* str) {
     return wl_align(strlen(str) + 1);
 }
+
+class wl_obj {
+
+    public:
+
+    virtual void handle_event(uint16_t opcode, void* data, size_t size) = 0;
+
+    virtual wl_object ID() const noexcept = 0;
+};
+
+#define NULL_OBJ_ID 0
+#define DISPLAY_OBJ_ID 1

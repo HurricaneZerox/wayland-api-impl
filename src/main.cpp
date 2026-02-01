@@ -160,7 +160,7 @@ struct wl_seat::listener wl_seat_listener {
     
 };
 
-struct wl_mouse::listener wl_mouse_listener {
+struct wl_pointer::listener wl_mouse_listener {
     .enter = [](wl_uint serial, wl_object surface, wl_fixed surface_x, wl_fixed surface_y) {
         
     },
@@ -169,6 +169,9 @@ struct wl_mouse::listener wl_mouse_listener {
     },
     .motion = [](wl_uint serial, wl_fixed surface_x, wl_fixed surface_y) {
         
+    },
+    .button = [](wl_uint serial, wl_uint time, wl_uint button, wl_uint state) {
+        std::cout << "BUTTON\n";
     },
 };
 
@@ -237,7 +240,7 @@ int main() {
 
     display.dispatch_pending();
 
-    wl_mouse* mouse = seat->get_mouse();
+    wl_pointer* mouse = seat->get_mouse();
     mouse->listener = &wl_mouse_listener;
     
     framebuffer = Framebuffer(200, 200);

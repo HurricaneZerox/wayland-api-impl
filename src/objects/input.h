@@ -35,7 +35,7 @@ class wl_keyboard : public wl_obj {
 /**
     @brief Mouse
 */
-class wl_mouse : public wl_obj {
+class wl_pointer : public wl_obj {
     wl_object id;
 
     static constexpr wl_uint EV_ENTER_OPCODE = 0;
@@ -52,15 +52,45 @@ class wl_mouse : public wl_obj {
 
     public:
 
+    enum class button_state : wl_uint {
+        released = 0,
+        pressed = 1,
+    };
+
+    enum class axis : wl_uint {
+        vertical_scroll = 0,
+        horizontal_scroll = 1,
+    };
+
+    enum class axis_source : wl_uint {
+        wheel = 0,
+        finger = 1,
+        continuous = 2,
+        wheel_tilt = 3,
+    };
+
+    enum class axis_relative_direction : wl_uint {
+        identical = 0,
+        inverted = 1,
+    };
+
     struct listener {
         void (*enter)(wl_uint serial, wl_object surface, wl_fixed surface_x, wl_fixed surface_y);
         void (*leave)(wl_uint serial, wl_object surface);
         void (*motion)(wl_uint serial, wl_fixed surface_x, wl_fixed surface_y);
+        void (*button)(wl_uint serial, wl_uint time, wl_uint button, enum button_state state);
+        void (*axis)(wl_uint time, enum axis axis, wl_uint value);
+        void (*frame)();
+        void (*axis_source)(enum axis_source axis_source);
+        void (*axis_stop)(wl_uint serial, enum axis axis);
+        void (*axis_discrete)(enum axis axis, wl_int discrete);
+        void (*axis_value120)(enum axis axis, wl_int value120);
+        void (*axis_relative_direction)(enum axis axis, enum axis_relative_direction direction);
     };
 
     listener* listener = nullptr;
 
-    wl_mouse(const wl_new_id id) : id(id) {
+    wl_pointer(const wl_new_id id) : id(id) {
 
     }
 
@@ -84,6 +114,8 @@ class wl_mouse : public wl_obj {
             listener->leave(read_wl_uint(data), read_wl_object((char*)data + 4));
         } else if (opcode == EV_MOTION_OPCODE) {
             listener->motion(read_wl_uint(data), read_wl_fixed((char*)data + 4), read_wl_fixed((char*)data + 8));
+        } else if (opcode == EV_BUTTON_OPCODE) {
+            listener->button(read_wl_uint(data), read_wl_uint((char*)data + 4), read_wl_uint((char*)data + 8), (button_state)read_wl_uint((char*)data + 12));
         }
     }
 };
@@ -116,8 +148,8 @@ class wl_seat : public wl_obj {
         }
     }
 
-    wl_mouse* get_mouse() {
-        wl_mouse* mouse = new wl_mouse(wl_id_assigner.get_id());
+    wl_pointer* get_mouse() {
+        wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
 
         WaylandMessage client_msg(send_queue_alloc, id, 0, 1);
         client_msg.Write(mouse->ID());

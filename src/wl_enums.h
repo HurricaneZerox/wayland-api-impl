@@ -8,7 +8,6 @@ enum class Format {
     BGR233 = 0x38524742,
     XRGB4444 = 0x32315258,
     XBGR4444 = 0x32314258,
-
 };
 
 inline const char* format_to_str(const Format format) {

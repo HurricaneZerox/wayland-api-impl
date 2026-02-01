@@ -503,6 +503,7 @@ class xdg_wm_base : public wl_obj {
             }
 
             const wl_uint serial = read_wl_uint(data);
+            pong(serial);
         }
     }
 
@@ -717,7 +718,6 @@ int main() {
             has_attached_buffer = true;
         }
         
-        std::cout << "Loop\n";
         display.roundtrip();
     }    
 

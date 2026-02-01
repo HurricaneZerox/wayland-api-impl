@@ -1,7 +1,9 @@
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <map>
 
+#include <memory>
 #include <set>
 #include <stdexcept>
 #include <unistd.h>
@@ -103,11 +105,11 @@ class wl_obj {
 };
 
 class wl_id_map {
-    std::map<wl_object, wl_obj*> objects;
+    std::map<wl_object, std::shared_ptr<wl_obj*>> objects;
 
     public:
 
-    wl_obj* get(const wl_object id) {
+    std::shared_ptr<wl_obj*> get(const wl_object id) {
         if (objects.count(id) == 0) {
             return nullptr;
         }
@@ -115,8 +117,10 @@ class wl_id_map {
         return objects.at(id);
     }
 
-    void set(const wl_object id, wl_obj* object) {
-        objects[id] = object;
+    std::shared_ptr<wl_obj*> create(wl_obj& object) {
+        std::shared_ptr<wl_obj*> object_ptr = std::make_shared<wl_obj*>(&object);
+        objects[object.ID()] = object_ptr;
+        return object_ptr;
     }
 };
 
@@ -209,7 +213,7 @@ class wl_display {
         wl_registry* registry = new wl_registry(registry_id, socket);
         wl_obj* object = registry;
 
-        wl_id_map.set(2, object);
+        wl_id_map.create(*object);
 
         return *registry;
     }
@@ -244,7 +248,7 @@ class wl_display {
                 continue;
             }
 
-            wl_obj* object = wl_id_map.get(ev.object_id);
+            std::shared_ptr<wl_obj*> object = wl_id_map.get(ev.object_id);
 
             if (!object) {
                 std::string warning_msg = "[Wayland::WARN]: Received event for non-existent object. (id: ";
@@ -253,7 +257,7 @@ class wl_display {
                 continue;
             }
 
-            object->handle_event(ev.opcode, ev.payload, ev.size - WL_EVENT_HEADER_SIZE);
+            (*object)->handle_event(ev.opcode, ev.payload, ev.size - WL_EVENT_HEADER_SIZE);
         }
     }
 
@@ -278,7 +282,7 @@ class wl_display {
         until there is an event to read from.
     */
     size_t dispatch() {
-
+        return 0;
     }
 
     void roundtrip() {
@@ -371,6 +375,21 @@ class xdg_toplevel : public wl_obj {
 
     wl_object id;
 
+    static constexpr wl_uint DESTROY_OPCODE = 0;
+    static constexpr wl_uint SET_PARENT_OPCODE = 1;
+    static constexpr wl_uint SET_TITLE_OPCODE = 2;
+    static constexpr wl_uint SET_APP_ID_OPCODE = 3;
+    static constexpr wl_uint SHOW_WINDOW_MENU_OPCODE = 4;
+    static constexpr wl_uint MOVE_OPCODE = 5;
+    static constexpr wl_uint RESIZE_OPCODE = 6;
+    static constexpr wl_uint SET_MAX_SIZE_OPCODE = 7;
+    static constexpr wl_uint SET_MIN_SIZE_OPCODE = 8;
+    static constexpr wl_uint SET_MAXIMISED_OPCODE = 9;
+    static constexpr wl_uint UNSET_MAXIMISED_OPCODE = 10;
+    static constexpr wl_uint SET_FULLSCREEN_OPCODE = 11;
+    static constexpr wl_uint UNSET_FULLSCREEN_OPCODE = 12;
+    static constexpr wl_uint SET_MINIMISED_OPCODE = 13;
+
     public:
 
     struct listener {
@@ -382,9 +401,7 @@ class xdg_toplevel : public wl_obj {
 
     listener* listener;
 
-    xdg_toplevel(const wl_new_id id) : id(id) {
-        
-    }
+    xdg_toplevel(const wl_new_id id) : id(id) {}
 
     wl_object ID() const noexcept override {
         return id;
@@ -404,6 +421,13 @@ class xdg_toplevel : public wl_obj {
         } else if (opcode == 3) {
             listener->wm_capabilities();
         }
+    }
+
+    void set_title(const char* title) {
+        const wl_string str(strlen(title) + 1, title);
+
+        WaylandMessage client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
+        client_msg.Write(str);
     }
 };
 
@@ -637,12 +661,12 @@ void on_global_registered(wl_registry& registry, const WaylandGlobal& global) {
         const wl_new_id id = wl_id_assigner.get_id();
         registry.bind(global.name, global.interface, global.version, id);
         shm = new wl_shm(id);
-        wl_id_map.set(id, shm);
+        wl_id_map.create(*shm);
     } else if (global.interface.Compare("xdg_wm_base") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();
         registry.bind(global.name, global.interface, global.version, id);
         wm_base = new xdg_wm_base(id);
-        wl_id_map.set(id, wm_base);
+        wl_id_map.create(*wm_base);
     }
 }
 
@@ -669,17 +693,19 @@ int main() {
     shm->listener = &wl_shm_listener;
 
     wl_surface* surface = compositor.create_surface(display.socket);
-    wl_id_map.set(surface->id, surface);
+    wl_id_map.create(*surface);
     
     xdg_surface* xdg_surface = wm_base->get_xdg_surface(display.socket, *surface);
-    wl_id_map.set(xdg_surface->ID(), xdg_surface);
+    wl_id_map.create(*xdg_surface);
     xdg_surface->listener = &xdg_surface_listener;
 
     xdg_toplevel* toplevel = xdg_surface->get_toplevel(display.socket);
-    wl_id_map.set(toplevel->ID(), toplevel);
+    wl_id_map.create(*toplevel);
     toplevel->listener = &xdg_toplevel_listener;
 
-    //display.dispatch_pending();
+    toplevel->set_title("Test Application");
+
+    display.dispatch_pending();
 
     int width = 200;
     int height = 200;

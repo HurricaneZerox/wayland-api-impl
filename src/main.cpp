@@ -218,11 +218,7 @@ class wl_display {
 
     }
 
-    void roundtrip() {
-        if (!send_queue.Empty()) {
-            send_queue.Flush(socket);
-        }
-
+    void read_events() {
         event_queue.Recv(socket);
 
         while (true) {
@@ -259,6 +255,35 @@ class wl_display {
 
             object->handle_event(ev.opcode, ev.payload, ev.size - WL_EVENT_HEADER_SIZE);
         }
+    }
+
+    /**
+        @brief Dispatches messages on the send queue without
+        reading from the event queue.
+
+        @returns The number of messages dispatched.
+    */
+    size_t dispatch_pending() {
+        if (!send_queue.Empty()) {
+            return send_queue.Flush(socket);
+        }
+
+        return 0;
+    }
+
+    /**
+        @brief Dispatches messages on the send queue.
+
+        If the event queue is empty, this function blocks
+        until there is an event to read from.
+    */
+    size_t dispatch() {
+
+    }
+
+    void roundtrip() {
+        dispatch_pending();
+        read_events();
     }
 };
 
@@ -633,10 +658,10 @@ int main() {
     wl_registry& registry = display.get_registry();
     registry.set_listener(&registry_listener);
 
+    // Global population roundtrip (C: Create registry -> S: Announce globals -> C: Bind globals)
     display.roundtrip();
-    shm->listener = &wl_shm_listener;
 
-    display.roundtrip();
+    shm->listener = &wl_shm_listener;
 
     wl_surface* surface = compositor.create_surface(display.socket);
     wl_id_map.set(surface->id, surface);
@@ -649,7 +674,7 @@ int main() {
     wl_id_map.set(toplevel->ID(), toplevel);
     toplevel->listener = &xdg_toplevel_listener;
 
-    send_queue.Flush(display.socket);
+    //display.dispatch_pending();
 
     int width = 200;
     int height = 200;
@@ -678,16 +703,14 @@ int main() {
 
     wl_shm_pool pool = shm->create_pool(display.socket, fd, size);
     wl_buffer buffer = pool.create_buffer(display.socket, 0, width, height, stride, 0);
-    send_queue.Flush(display.socket);
 
-    display.roundtrip();
     surface->commit(display.socket);
-    display.roundtrip();
 
     surface->attach(display.socket, buffer, 0, 0);
     surface->commit(display.socket);
 
     while (true) {
+        std::cout << "Loop\n";
         display.roundtrip();
     }    
 

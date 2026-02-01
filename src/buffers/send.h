@@ -45,7 +45,7 @@ class SendQueue {
         fd = data;
     }
 
-    void Flush(const int socket) {
+    size_t Flush(const int socket) {
         if (fd != -1) {
             char* fd_data = new char[4];
             from_int(fd, fd_data);
@@ -83,10 +83,13 @@ class SendQueue {
             }
         }
 
+        const size_t prev_msg_n = msg_n;
+
         fd = -1;
 
         offset = 0;
         msg_n = 0;
+        return prev_msg_n;
     }
 
     bool Empty() const noexcept {

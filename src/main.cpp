@@ -6,6 +6,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include <syscall.h>
 #include <sys/mman.h>
@@ -89,6 +90,14 @@ class wl_id_assigner {
 
         throw std::runtime_error("Failed to get new ID.");
     }
+
+    void destroy_id(const wl_object id) {
+        if (ids.count(id) == 0) {
+            throw std::runtime_error("Attempt to destroy ID that is not bound to anything");
+        }
+
+        ids.erase(id);
+    }
 };
 
 wl_id_assigner wl_id_assigner;
@@ -121,6 +130,10 @@ class wl_id_map {
         std::shared_ptr<wl_obj*> object_ptr = std::make_shared<wl_obj*>(&object);
         objects[object.ID()] = object_ptr;
         return object_ptr;
+    }
+
+    void destroy(const wl_object id) {
+        objects.erase(id);
     }
 };
 
@@ -244,7 +257,8 @@ class wl_display {
                 exit(1);
             } else if (ev.object_id == 1 && ev.opcode == EV_DELETE_ID_OPCODE) {
                 wl_object id = read_wl_object(ev.payload);
-                std::cout << "DELETE ID: " << id << '\n';
+                wl_id_assigner.destroy_id(id);
+                wl_id_map.destroy(id);
                 continue;
             }
 
@@ -291,8 +305,11 @@ class wl_display {
     }
 };
 
-class wl_buffer {
+class wl_buffer : public wl_obj {
     wl_object id;
+    bool is_invalid = false;
+
+    static constexpr wl_uint DESTROY_OPCODE = 0;
 
     public:
 
@@ -300,12 +317,17 @@ class wl_buffer {
         
     }
 
-    wl_object ID() const noexcept {
+    wl_object ID() const noexcept override {
         return id;
     }
 
     void destroy() {
+        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        is_invalid = true;
+    }
 
+    void handle_event(uint16_t opcode, void *data, size_t size) override {
+        
     }
 };
 
@@ -320,8 +342,23 @@ struct wl_surface : public wl_obj {
     static constexpr wl_uint SET_INPUT_REGION_OPCODE = 5;
     static constexpr wl_uint COMMIT_OPCODE = 6;
     static constexpr wl_uint SET_BUFFER_TRANSFORM_OPCODE = 7;
+    static constexpr wl_uint SET_BUFFER_SCALE_OPCODE = 8;
+    static constexpr wl_uint DAMAGE_BUFFER_OPCODE = 9;
+    static constexpr wl_uint OFFSET_OPCODE = 10;
+
+    static constexpr wl_uint EV_ENTER_OPCODE = 0;
+    static constexpr wl_uint EV_LEAVE_OPCODE = 1;
+    static constexpr wl_uint EV_PREFERRED_BUFFER_SCALE_OPCODE = 2;
+    static constexpr wl_uint EV_PREFERRED_BUFFER_TRANSFORM_OPCODE = 3;
 
     public:
+
+    struct listener {
+        void (*enter)();
+        void (*leave)();
+        void (*preferred_buffer_scale)();
+        void (*preferred_buffer_transform)();
+    };
 
     wl_surface(const wl_new_id id) : id(id) {
 
@@ -540,6 +577,10 @@ class wl_shm_pool {
 
     wl_object id;
 
+    static constexpr wl_uint CREATE_BUFFER_OPCODE = 0;
+    static constexpr wl_uint DESTROY_OPCODE = 1;
+    static constexpr wl_uint RESIZE_OPCODE = 2;
+
     public:
 
     wl_shm_pool(const wl_new_id id) : id(id) {
@@ -550,12 +591,11 @@ class wl_shm_pool {
         return id;
     }
 
-    wl_buffer create_buffer(fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, wl_uint format) {
-        wl_buffer buffer(wl_id_assigner.get_id());
-        std::cout << "Buffer ID: " << buffer.ID() << '\n';
+    wl_buffer* create_buffer(fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, wl_uint format) {
+        wl_buffer* buffer = new wl_buffer(wl_id_assigner.get_id());
 
-        WaylandMessage client_msg(send_queue_alloc, id, 0, 6);
-        client_msg.Write(buffer.ID());
+        WaylandMessage client_msg(send_queue_alloc, id, CREATE_BUFFER_OPCODE, 6);
+        client_msg.Write(buffer->ID());
         client_msg.Write(offset);
         client_msg.Write(width);
         client_msg.Write(height);
@@ -564,8 +604,31 @@ class wl_shm_pool {
 
         return buffer;
     }
+
+    void destroy() {
+        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+    }
+
+    /**
+        Remaps the backing server-side memory for the pool
+        with size @p bytes. This function can only be used
+        to make the pool bigger. It is the clients responsibility
+        to keep the backing file (pointed to by fd) as the correct
+        size.
+    */
+    void resize(wl_int bytes) {
+        WaylandMessage client_msg(send_queue_alloc, id, RESIZE_OPCODE, 1);
+        client_msg.Write(bytes);
+    }
 };
 
+/**
+    @brief Shared memory support.
+
+    Wayland clients and servers use shared memory to display
+    an image created by the client as a window shown by the
+    server.
+*/
 class wl_shm : public wl_obj {
     wl_object id;
 
@@ -589,12 +652,11 @@ class wl_shm : public wl_obj {
         return id;
     }
 
-    wl_shm_pool create_pool(const fd_t socket, fd_t fd, size_t size) {
-        wl_shm_pool pool(wl_id_assigner.get_id());
-        std::cout << "Pool ID: " << pool.ID() << '\n';
+    wl_shm_pool* create_pool(const fd_t socket, fd_t fd, size_t size) {
+        wl_shm_pool* pool = new wl_shm_pool(wl_id_assigner.get_id());
 
         WaylandMessage client_msg(send_queue_alloc, id, 0, 2);
-        client_msg.Write(pool.ID());
+        client_msg.Write(pool->ID());
         client_msg.Write(size);
 
         send_queue.SetAncillary(fd);
@@ -621,19 +683,150 @@ class wl_shm : public wl_obj {
     Use-case example
 */
 
+wl_display display;
+wl_surface* surface;
+wl_shm* shm;
+
+int resizes = 0;
+
+wl_buffer* create_buffer(wl_shm_pool& pool, wl_int width, wl_int height) {
+    wl_buffer* buffer = pool.create_buffer(display.socket, 0, width, height, width * 4, 0);
+    wl_id_map.create(*buffer);
+    surface->commit(display.socket);
+    return buffer;
+}
+
+void destroy_shared_memory_fd(const int fd) {
+    if (fd != -1) {
+        close(fd);
+    }
+}
+
+int create_shared_memory_fd(const size_t size) {
+    const int fd = syscall(SYS_memfd_create, "buffer", 0);
+
+    if (fd < 0) {
+        throw std::runtime_error("Failed to create buffer file");
+    }
+
+    ftruncate(fd, size);
+    return fd;
+}
+
+struct Framebuffer {
+    unsigned char* data;
+    int fd;
+    wl_shm_pool* pool;
+    wl_buffer* buffer;
+
+    bool has_acked_config = false;
+    bool has_surface_resized = false;
+
+    Framebuffer() {}
+
+    void Create(const size_t width, const size_t height) {
+        int stride = width * 4;
+        int size = stride * height;
+
+        fd = create_shared_memory_fd(size);
+        data = (unsigned char*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                unsigned char* pixel = data + ((y * width + x) * 4);
+                pixel[0] = 0;
+                pixel[1] = ((float) x / width) * 255;
+                pixel[2] = ((float) y / height) * 255;
+                pixel[3] = 255;
+            }
+        }
+
+        pool = shm->create_pool(display.socket, fd, size);
+        buffer = create_buffer(*pool, width, height);
+    }
+
+    Framebuffer(const size_t width, const size_t height) {
+        Create(width, height);
+    }
+
+    void Attach() {
+        surface->attach(display.socket, *buffer, 0, 0);
+        surface->commit(display.socket);
+    }
+
+    void Resize(const size_t width, const size_t height) {
+
+        if (buffer) {
+            buffer->destroy();
+            buffer = nullptr;
+        }
+
+        if (pool) {
+            pool->destroy();
+            pool = nullptr;
+        }
+
+        destroy_shared_memory_fd(fd);
+
+        Create(width, height);
+
+        display.dispatch_pending();
+    }
+};
+
+Framebuffer framebuffer;
+
+void recreate_buffer(wl_int width, wl_int height) {
+    /*if (buffer) {
+        buffer->destroy();
+        buffer = nullptr;
+    }
+
+    if (pool) {
+        pool->destroy();
+        pool = nullptr;
+    }
+
+    const size_t new_size = width * height * 4;
+
+    fd = syscall(SYS_memfd_create, "buffer", 0);
+
+    if (fd < 0) {
+        throw std::runtime_error("Failed to create buffer file");
+    }
+
+    ftruncate(fd, new_size);
+
+    pool = shm->create_pool(display.socket, fd, new_size);
+    buffer = pool->create_buffer(display.socket, 0, width, height, 4, 0);
+    wl_id_map.create(*buffer);
+    surface->commit(display.socket);
+    surface->attach(display.socket, *buffer, 0, 0);
+    surface->commit(display.socket);*/
+
+    //create_buffer(width, height);
+}
+
 bool has_configured = false;
-bool has_attached_buffer = false;
+bool has_resized_buffer = false;
+
+wl_int screen_width = 200;
+wl_int screen_height = 200;
 
 struct xdg_surface::listener xdg_surface_listener {
     .configure = [](xdg_surface& surface, int serial) {
         surface.ack_configure(serial);
-        has_configured = true;
+        framebuffer.Attach();
     }
 };
 
 struct xdg_toplevel::listener xdg_toplevel_listener {
-    .configure = [](int x, int y) {
+    .configure = [](const wl_int x, const wl_int y) {
         std::cout << "Configure: " << x << ", " << y << '\n';
+        screen_width = x;
+        screen_height = y;
+
+        framebuffer.Resize(x, y);
     },
     .close = []() {
         std::cout << "Close" << '\n';
@@ -648,11 +841,8 @@ struct xdg_toplevel::listener xdg_toplevel_listener {
 
 wl_compositor compositor(0);
 xdg_wm_base* wm_base;
-wl_shm* shm;
 
 void on_global_registered(wl_registry& registry, const WaylandGlobal& global) {
-    //std::cout << "Global: " << global.interface << '\n';
-
     if (global.interface.Compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();
         registry.bind(global.name, global.interface, global.version, id);
@@ -682,8 +872,6 @@ struct wl_shm::listener wl_shm_listener {
 
 int main() {
 
-    wl_display display;
-
     wl_registry& registry = display.get_registry();
     registry.set_listener(&registry_listener);
 
@@ -692,7 +880,7 @@ int main() {
 
     shm->listener = &wl_shm_listener;
 
-    wl_surface* surface = compositor.create_surface(display.socket);
+    surface = compositor.create_surface(display.socket);
     wl_id_map.create(*surface);
     
     xdg_surface* xdg_surface = wm_base->get_xdg_surface(display.socket, *surface);
@@ -706,44 +894,10 @@ int main() {
     toplevel->set_title("Test Application");
 
     display.dispatch_pending();
-
-    int width = 200;
-    int height = 200;
-    int stride = width * 4;
-    int size = stride * height;
-
-    int fd = syscall(SYS_memfd_create, "buffer", 0);
-
-    if (fd < 0) {
-        throw std::runtime_error("Failed to create buffer file");
-    }
-
-    ftruncate(fd, size);
-
-    unsigned char* data = (unsigned char*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
-    for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height; y++) {
-            unsigned char* pixel = data + ((y * width + x) * 4);
-            pixel[0] = 0;
-            pixel[1] = ((float) x / width) * 255;
-            pixel[2] = ((float) y / height) * 255;
-            pixel[3] = 255;
-        }
-    }
-
-    wl_shm_pool pool = shm->create_pool(display.socket, fd, size);
-    wl_buffer buffer = pool.create_buffer(display.socket, 0, width, height, stride, 0);
-
-    surface->commit(display.socket);
+    
+    framebuffer = Framebuffer(200, 200);
 
     while (true) {
-        if (has_configured && !has_attached_buffer) {
-            surface->attach(display.socket, buffer, 0, 0);
-            surface->commit(display.socket);
-            has_attached_buffer = true;
-        }
-        
         display.roundtrip();
     }    
 

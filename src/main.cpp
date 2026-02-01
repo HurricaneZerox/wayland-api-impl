@@ -822,6 +822,10 @@ struct xdg_surface::listener xdg_surface_listener {
 
 struct xdg_toplevel::listener xdg_toplevel_listener {
     .configure = [](const wl_int x, const wl_int y) {
+        if (x == 0 || y == 0) {
+            return;
+        } 
+
         std::cout << "Configure: " << x << ", " << y << '\n';
         screen_width = x;
         screen_height = y;

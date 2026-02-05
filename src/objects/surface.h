@@ -39,8 +39,8 @@ struct wl_surface : public wl_obj {
     }
 
     void attach(wl_fd_t socket, wl_buffer& buffer, wl_int x, wl_int y) {
-        wl_request client_msg(send_queue_alloc, id, ATTACH_OPCODE, 3);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, ATTACH_OPCODE, 3);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(buffer.ID());
         writer.write(x);
@@ -48,7 +48,8 @@ struct wl_surface : public wl_obj {
     }
 
     void commit(wl_fd_t socket) {
-        wl_request client_msg(send_queue_alloc, id, COMMIT_OPCODE, 0);
+        wl_message client_msg(id, COMMIT_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     }
 
     void handle_event(uint16_t opcode, wl_message::reader reader) override {

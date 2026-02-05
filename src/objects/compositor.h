@@ -19,8 +19,8 @@ class wl_compositor {
         wl_surface* surface = new wl_surface(wl_id_assigner.get_id());
         wl_id_map.create(*surface);
 
-        wl_request client_msg(send_queue_alloc, id, 0, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, 0, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(surface->id);
 

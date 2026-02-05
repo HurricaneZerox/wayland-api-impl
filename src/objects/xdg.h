@@ -69,7 +69,8 @@ class xdg_toplevel : public wl_obj {
     }
 
     void destroy() {
-        wl_request client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        wl_message client_msg(id, DESTROY_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     }
 
     void set_parent(const wl_object parent) {
@@ -79,8 +80,8 @@ class xdg_toplevel : public wl_obj {
     void set_title(const char* title) {
         const wl_string str(strlen(title) + 1, title);
 
-        wl_request client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(str);
     }
@@ -90,22 +91,26 @@ class xdg_toplevel : public wl_obj {
     }
 
     void set_maximised() {
-        wl_request client_msg(send_queue_alloc, id, SET_MAXIMISED_OPCODE, 0);
+        wl_message client_msg(id, SET_MAXIMISED_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     }
 
     void unset_maximised() {
-        wl_request client_msg(send_queue_alloc, id, UNSET_MAXIMISED_OPCODE, 0);
+        wl_message client_msg(id, UNSET_MAXIMISED_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     }
 
     void set_fullscreen(const wl_object output) {
-        wl_request client_msg(send_queue_alloc, id, SET_FULLSCREEN_OPCODE, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, SET_FULLSCREEN_OPCODE, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(output);
     }
 
     void unset_fullscreen() {
-        wl_request client_msg(send_queue_alloc, id, UNSET_FULLSCREEN_OPCODE, 0);
+        wl_message client_msg(id, UNSET_FULLSCREEN_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
+        
     }
 };
 
@@ -137,8 +142,8 @@ class xdg_surface : public wl_obj {
         xdg_toplevel* toplevel = new xdg_toplevel(wl_id_assigner.get_id());
         wl_id_map.create(*toplevel);
 
-        wl_request client_msg(send_queue_alloc, id, 1, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, 1, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
         
         writer.write(toplevel->ID());
 
@@ -146,8 +151,8 @@ class xdg_surface : public wl_obj {
     }
 
     void ack_configure(int serial) {
-        wl_request client_msg(send_queue_alloc, id, 4, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, 4, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(serial);
     }
@@ -164,9 +169,7 @@ class xdg_surface : public wl_obj {
 };
 
 class xdg_wm_base : public wl_obj {
-
     wl_object id;
-
     wl_fd_t socket;
 
     static constexpr wl_uint DESTROY_OPCODE = 0;
@@ -190,8 +193,8 @@ class xdg_wm_base : public wl_obj {
         xdg_surface* x_surface = new xdg_surface(wl_id_assigner.get_id());
         wl_id_map.create(*x_surface);
 
-        wl_request client_msg(send_queue_alloc, id, GET_XDG_SURFACE_OPCODE, 2);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, GET_XDG_SURFACE_OPCODE, 2);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(x_surface->ID());
         writer.write(surface.id);
@@ -200,8 +203,8 @@ class xdg_wm_base : public wl_obj {
     }
 
     void pong(const wl_uint serial) {
-        wl_request client_msg(send_queue_alloc, id, PONG_OPCODE, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, PONG_OPCODE, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(serial);
     }

@@ -20,7 +20,8 @@ class wl_buffer : public wl_obj {
     }
 
     void destroy() {
-        wl_request client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        wl_message client_msg(id, DESTROY_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
         is_invalid = true;
     }
 

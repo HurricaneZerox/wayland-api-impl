@@ -163,8 +163,8 @@ class wl_seat : public wl_obj {
     wl_pointer* get_mouse() {
         wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
 
-        wl_request client_msg(send_queue_alloc, id, 0, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(id, 0, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(mouse->ID());
 

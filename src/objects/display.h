@@ -67,8 +67,8 @@ class wl_display {
     wl_registry& get_registry() {
         const wl_new_id registry_id = wl_id_assigner.get_id();
 
-        wl_request client_msg(send_queue_alloc, DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
-        wl_request::writer writer(client_msg);
+        wl_message client_msg(DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
         
         writer.write(registry_id);
 

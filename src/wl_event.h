@@ -12,8 +12,6 @@
 #include "wl_types.h"
 #include "wl_string.h"
 
-#define WL_EVENT_HEADER_SIZE 2 * WL_WORD_SIZE
-
 /**
     @brief Represents a message or event sent between
     the client and server.
@@ -33,7 +31,15 @@ struct wl_message {
 
     value_ptr payload = nullptr;
 
+    wl_message(wl_object object_id, wl_uint16 opcode, wl_uint16 size) : object_id(object_id), opcode(opcode), size((size * WL_WORD_SIZE) + WL_EVENT_HEADER_SIZE) {}
+    wl_message(wl_object object_id, wl_uint16 opcode, wl_uint16 size, char* payload) : wl_message(object_id, opcode, size) {
+        this->payload = payload;
+    }
+
     class reader;
+    class writer;
+
+    writer new_writer(void*(*allocator)(size_t));
 };
 
 class wl_message::reader {
@@ -85,35 +91,7 @@ class wl_message::reader {
 
 };
 
-class wl_request {
-    const wl_object object_id;
-    const wl_uint16 opcode;
-    const wl_uint16 size;
-
-    char* data;
-
-    char* Payload() const {
-        return data + WL_EVENT_HEADER_SIZE;
-    }
-
-    public:
-
-    wl_request(const wl_object object_id, const wl_uint16 opcode, const wl_uint16 size) : object_id(object_id), opcode(opcode), size(size) {
-
-    }
-
-    wl_request(void*(*allocator)(size_t), uint32_t object_id, const uint16_t opcode, const uint16_t msg_size)
-      : size((msg_size * WL_WORD_SIZE) + WL_EVENT_HEADER_SIZE), data(static_cast<char*>(allocator(size))),
-        object_id(object_id),
-        opcode(opcode) {
-        from_uint(object_id, data);
-        from_uint(((size << (sizeof(uint16_t) * 8)) | opcode), this->data + WL_WORD_SIZE);
-    }
-
-    class writer;
-};
-
-class wl_request::writer {
+class wl_message::writer {
 
     const wl_uint16 size = 0;
     const char* data = nullptr;
@@ -128,7 +106,18 @@ class wl_request::writer {
 
     public:
 
-    writer(const wl_request& request) : size(request.size), data(request.Payload()), cursor(request.Payload()) {}
+    writer(const wl_message& request, char* data) : size(request.size), data(data), cursor(data + WL_EVENT_HEADER_SIZE) {
+
+        if (!data) {
+            lumber::err("Attempt to create writer from nullptr");
+            exit(1);
+        }
+
+        if (!cursor) {
+            lumber::err("Cursor was nullptr");
+            exit(1);
+        }
+    }
 
     void write(const wl_uint val) {
         from_uint(val, cursor);
@@ -154,5 +143,12 @@ class wl_request::writer {
         
         advance_cursor(string.SerialisedSize());
     }
-
 };
+
+inline wl_message::writer wl_message::new_writer(void*(*allocator)(size_t bytes)) {
+    char* writeout = (char*)allocator(size);
+
+    from_uint(object_id, writeout);
+    from_uint(((size << (sizeof(wl_uint16) * 8)) | opcode), writeout + WL_OBJECT_SIZE);
+    return writer(*this, writeout);
+}

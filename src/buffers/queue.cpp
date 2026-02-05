@@ -55,12 +55,12 @@ recv_queue::iterator recv_queue::iterator::operator++(int) noexcept {
 }
 
 wl_message recv_queue::iterator::operator*() const {
-    return {
-        .object_id = read_wl_uint(m_ptr),
-        .size = *reinterpret_cast<const wl_uint16* const>(m_ptr + 6),
-        .opcode = *reinterpret_cast<const wl_uint16* const>(m_ptr + 4),
-        .payload = (char*)m_ptr + WL_EVENT_HEADER_SIZE,
-    };
+    const wl_object object_id = read_wl_object(m_ptr);
+    const wl_uint size = *reinterpret_cast<const wl_uint16* const>(m_ptr + 6);
+    const wl_uint opcode = *reinterpret_cast<const wl_uint16* const>(m_ptr + 4);
+    char* payload = (char*)m_ptr + WL_EVENT_HEADER_SIZE;
+
+    return wl_message(object_id, opcode, size, payload);
 }
 
 bool recv_queue::iterator::operator==(const recv_queue::iterator& other) const noexcept {

@@ -33,6 +33,7 @@ using wl_fd_t = wl_uint;
 #define WL_NEW_ID_SIZE sizeof(wl_new_id)
 #define WL_FD_SIZE sizeof(wl_fd_t)
 #define WL_WORD_SIZE 4
+#define WL_EVENT_HEADER_SIZE 2 * WL_WORD_SIZE
 
 #define WL_NEW_ID_MIN 2
 #define WL_NEW_ID_MAX 0xFEFFFFFF

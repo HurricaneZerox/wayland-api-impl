@@ -20,7 +20,7 @@ class wl_buffer : public wl_obj {
     }
 
     void destroy() {
-        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
         is_invalid = true;
     }
 

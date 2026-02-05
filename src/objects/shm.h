@@ -23,10 +23,10 @@ class wl_shm_pool {
         return id;
     }
 
-    wl_buffer* create_buffer(fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, wl_uint format) {
+    wl_buffer* create_buffer(wl_fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, wl_uint format) {
         wl_buffer* buffer = new wl_buffer(wl_id_assigner.get_id());
 
-        WaylandMessage client_msg(send_queue_alloc, id, CREATE_BUFFER_OPCODE, 6);
+        wl_request client_msg(send_queue_alloc, id, CREATE_BUFFER_OPCODE, 6);
         client_msg.Write(buffer->ID());
         client_msg.Write(offset);
         client_msg.Write(width);
@@ -38,7 +38,7 @@ class wl_shm_pool {
     }
 
     void destroy() {
-        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
     }
 
     /**
@@ -49,7 +49,7 @@ class wl_shm_pool {
         size.
     */
     void resize(wl_int bytes) {
-        WaylandMessage client_msg(send_queue_alloc, id, RESIZE_OPCODE, 1);
+        wl_request client_msg(send_queue_alloc, id, RESIZE_OPCODE, 1);
         client_msg.Write(bytes);
     }
 };
@@ -84,10 +84,10 @@ class wl_shm : public wl_obj {
         return id;
     }
 
-    wl_shm_pool* create_pool(const fd_t socket, fd_t fd, size_t size) {
+    wl_shm_pool* create_pool(const wl_fd_t socket, wl_fd_t fd, size_t size) {
         wl_shm_pool* pool = new wl_shm_pool(wl_id_assigner.get_id());
 
-        WaylandMessage client_msg(send_queue_alloc, id, 0, 2);
+        wl_request client_msg(send_queue_alloc, id, 0, 2);
         client_msg.Write(pool->ID());
         client_msg.Write(size);
 

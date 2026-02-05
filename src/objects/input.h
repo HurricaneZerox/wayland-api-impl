@@ -151,7 +151,7 @@ class wl_seat : public wl_obj {
     wl_pointer* get_mouse() {
         wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
 
-        WaylandMessage client_msg(send_queue_alloc, id, 0, 1);
+        wl_request client_msg(send_queue_alloc, id, 0, 1);
         client_msg.Write(mouse->ID());
 
         wl_id_map.create(*mouse);

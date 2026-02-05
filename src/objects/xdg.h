@@ -63,7 +63,7 @@ class xdg_toplevel : public wl_obj {
     }
 
     void destroy() {
-        WaylandMessage client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, DESTROY_OPCODE, 0);
     }
 
     void set_parent(const wl_object parent) {
@@ -73,7 +73,7 @@ class xdg_toplevel : public wl_obj {
     void set_title(const char* title) {
         const wl_string str(strlen(title) + 1, title);
 
-        WaylandMessage client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
+        wl_request client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
         client_msg.Write(str);
     }
 
@@ -82,27 +82,27 @@ class xdg_toplevel : public wl_obj {
     }
 
     void set_maximised() {
-        WaylandMessage client_msg(send_queue_alloc, id, SET_MAXIMISED_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, SET_MAXIMISED_OPCODE, 0);
     }
 
     void unset_maximised() {
-        WaylandMessage client_msg(send_queue_alloc, id, UNSET_MAXIMISED_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, UNSET_MAXIMISED_OPCODE, 0);
     }
 
     void set_fullscreen(const wl_object output) {
-        WaylandMessage client_msg(send_queue_alloc, id, SET_FULLSCREEN_OPCODE, 1);
+        wl_request client_msg(send_queue_alloc, id, SET_FULLSCREEN_OPCODE, 1);
         client_msg.Write(output);
     }
 
     void unset_fullscreen() {
-        WaylandMessage client_msg(send_queue_alloc, id, UNSET_FULLSCREEN_OPCODE, 0);
+        wl_request client_msg(send_queue_alloc, id, UNSET_FULLSCREEN_OPCODE, 0);
     }
 };
 
 class xdg_surface : public wl_obj {
 
     wl_new_id id;
-    fd_t socket;
+    wl_fd_t socket;
 
     public:
     
@@ -122,19 +122,19 @@ class xdg_surface : public wl_obj {
 
     void destroy();
 
-    xdg_toplevel* get_toplevel(const fd_t socket) {
+    xdg_toplevel* get_toplevel(const wl_fd_t socket) {
         this->socket = socket;
         xdg_toplevel* toplevel = new xdg_toplevel(wl_id_assigner.get_id());
         wl_id_map.create(*toplevel);
 
-        WaylandMessage client_msg(send_queue_alloc, id, 1, 1);
+        wl_request client_msg(send_queue_alloc, id, 1, 1);
         client_msg.Write(toplevel->ID());
 
         return toplevel;
     }
 
     void ack_configure(int serial) {
-        WaylandMessage client_msg(send_queue_alloc, id, 4, 1);
+        wl_request client_msg(send_queue_alloc, id, 4, 1);
         client_msg.Write(serial);
     }
 
@@ -153,7 +153,7 @@ class xdg_wm_base : public wl_obj {
 
     wl_object id;
 
-    fd_t socket;
+    wl_fd_t socket;
 
     static constexpr wl_uint DESTROY_OPCODE = 0;
     static constexpr wl_uint CREATE_POSITIONER_OPCODE = 1;
@@ -172,11 +172,11 @@ class xdg_wm_base : public wl_obj {
 
     void create_positioner();
 
-    xdg_surface* get_xdg_surface(const fd_t socket, wl_surface& surface) {
+    xdg_surface* get_xdg_surface(const wl_fd_t socket, wl_surface& surface) {
         xdg_surface* x_surface = new xdg_surface(wl_id_assigner.get_id());
         wl_id_map.create(*x_surface);
 
-        WaylandMessage client_msg(send_queue_alloc, id, GET_XDG_SURFACE_OPCODE, 2);
+        wl_request client_msg(send_queue_alloc, id, GET_XDG_SURFACE_OPCODE, 2);
         client_msg.Write(x_surface->ID());
         client_msg.Write(surface.id);
 
@@ -184,7 +184,7 @@ class xdg_wm_base : public wl_obj {
     }
 
     void pong(const wl_uint serial) {
-        WaylandMessage client_msg(send_queue_alloc, id, PONG_OPCODE, 1);
+        wl_request client_msg(send_queue_alloc, id, PONG_OPCODE, 1);
         client_msg.Write(serial);
     }
 

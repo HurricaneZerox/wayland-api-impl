@@ -9,6 +9,7 @@
 #include <sys/un.h>
 
 #include "wl_enums.h"
+#include "wl_event.h"
 #include "wl_types.h"
 #include "wl_string.h"
 #include "wl_state.h"
@@ -170,20 +171,18 @@ struct wl_pointer::listener wl_mouse_listener {
     .motion = [](wl_uint serial, wl_fixed surface_x, wl_fixed surface_y) {
         
     },
-    .button = [](wl_uint serial, wl_uint time, wl_uint button, wl_uint state) {
-        std::cout << "BUTTON\n";
-    },
 };
 
 wl_compositor compositor(0);
 xdg_wm_base* wm_base;
 
 void on_global_registered(wl_registry& registry, const wl_uint name, const wl_string& interface, const wl_uint version) {
+
     if (interface.Compare("wl_shell_surface") == 0) {
         std::cout << "SUPPORTS OLD SHELL INTERFACE\n";
     }
 
-    //std::cout << interface << '\n';
+    std::cout << interface << '\n';
 
     if (interface.Compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();

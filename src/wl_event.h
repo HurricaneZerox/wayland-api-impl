@@ -13,15 +13,24 @@
 
 #define WL_EVENT_HEADER_SIZE 2 * WL_WORD_SIZE
 
-struct wl_event {
-    const wl_uint object_id;
-    const wl_uint size;
-    const wl_uint opcode;
+/**
+    @brief Represents a message or event sent between
+    the client and server.
+*/
+struct wl_message {
+    using value_type = char;
+    using value_ptr = char*;
+    using difference_type = wl_uint16;
+    using size_type = wl_uint16;
+    
+    const wl_object object_id;
+    const size_type size;
+    const wl_opcode_t opcode;
 
-    char* payload = nullptr;
+    value_ptr payload = nullptr;
 };
 
-class WaylandMessage {
+class wl_request {
     uint16_t size;
     uint16_t offset = 0;
     char* data;
@@ -32,7 +41,7 @@ class WaylandMessage {
 
     public:
 
-    WaylandMessage(void*(*allocator)(size_t), uint32_t object_id, const uint16_t opcode, const uint16_t msg_size)
+    wl_request(void*(*allocator)(size_t), uint32_t object_id, const uint16_t opcode, const uint16_t msg_size)
       : size((msg_size * WL_WORD_SIZE) + WL_EVENT_HEADER_SIZE), data(static_cast<char*>(allocator(size))) {
         from_uint(object_id, data);
         from_uint(((size << (sizeof(uint16_t) * 8)) | opcode), this->data + WL_WORD_SIZE);

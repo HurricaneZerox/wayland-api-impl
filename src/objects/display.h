@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -10,14 +11,15 @@
 #include "../lumber.h"
 
 
+
 inline std::filesystem::path get_wayland_socket_path() {
     const std::filesystem::path parent_path = getenv("XDG_RUNTIME_DIR");
     const std::filesystem::path filename = getenv("WAYLAND_DISPLAY");
     return parent_path / filename;
 }
 
-inline fd_t create_wayland_socket() {
-    const fd_t handle = socket(AF_UNIX, SOCK_STREAM, 0);
+inline wl_fd_t create_wayland_socket() {
+    const wl_fd_t handle = socket(AF_UNIX, SOCK_STREAM, 0);
 
     if (handle < 0) {
         throw std::runtime_error("Failed to create socket");
@@ -58,13 +60,13 @@ class wl_display {
         IMPLEMENTATION = 3,
     };
 
-    fd_t socket;
+    wl_fd_t socket;
 
     wl_display() : socket(create_wayland_socket()) {}
 
     wl_registry& get_registry() {
         const wl_new_id registry_id = wl_id_assigner.get_id();
-        WaylandMessage client_msg(send_queue_alloc, DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
+        wl_request client_msg(send_queue_alloc, DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
         client_msg.Write(registry_id);
 
         wl_registry* registry = create_wl_registry(registry_id);
@@ -79,15 +81,18 @@ class wl_display {
     }
 
     void read_events() {
+
         event_queue.Recv(socket);
 
-        while (true) {
-            const std::optional<wl_event> opt_ev = event_queue.PopEvent();
-            if (!opt_ev.has_value()) { break; }
+        for (const wl_message msg : event_queue) {
+            const wl_message ev = msg;
 
-            const wl_event ev = opt_ev.value();
+            if (ev.object_id == NULL_OBJ_ID) {
+                lumber::err("[Wayland::ERR]: Event was dispatched to null object.");
+                exit(1);
+            }
 
-            if (ev.object_id == 1 && ev.opcode == EV_ERROR_OPCODE) {
+            if (ev.object_id == DISPLAY_OBJ_ID && ev.opcode == EV_ERROR_OPCODE) {
                 wl_object err_object_id = read_wl_object(ev.payload);
                 wl_uint err_opcode = read_wl_uint(ev.payload + 4);
                 wl_string err_msg(ev.payload + 8);
@@ -126,7 +131,7 @@ class wl_display {
     */
     size_t dispatch_pending() {
         if (!send_queue.Empty()) {
-            return send_queue.Flush(socket);
+            return send_queue.Send(socket);
         }
 
         return 0;

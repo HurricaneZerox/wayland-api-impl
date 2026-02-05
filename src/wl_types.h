@@ -4,8 +4,6 @@
 #include <cstdint>
 #include <cstring>
 
-using fd_t = uintmax_t;
-
 /**
     Type definitions for Wayland's protocol-defined
     types.
@@ -25,12 +23,15 @@ using wl_new_id = uint32_t;
 */
 
 using wl_uint16 = uint16_t;
+using wl_opcode_t = wl_uint16;
+using wl_fd_t = wl_uint;
 
 #define WL_INT_SIZE sizeof(wl_int)
 #define WL_UINT_SIZE sizeof(wl_uint)
 #define WL_FIXED_SIZE sizeof(wl_fixed)
 #define WL_OBJECT_SIZE sizeof(wl_object)
 #define WL_NEW_ID_SIZE sizeof(wl_new_id)
+#define WL_FD_SIZE sizeof(wl_fd_t)
 #define WL_WORD_SIZE 4
 
 #define WL_NEW_ID_MIN 2

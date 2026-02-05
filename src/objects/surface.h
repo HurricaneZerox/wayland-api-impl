@@ -38,15 +38,15 @@ struct wl_surface : public wl_obj {
 
     }
 
-    void attach(fd_t socket, wl_buffer& buffer, wl_int x, wl_int y) {
-        WaylandMessage client_msg(send_queue_alloc, id, ATTACH_OPCODE, 3);
+    void attach(wl_fd_t socket, wl_buffer& buffer, wl_int x, wl_int y) {
+        wl_request client_msg(send_queue_alloc, id, ATTACH_OPCODE, 3);
         client_msg.Write(buffer.ID());
         client_msg.Write(x);
         client_msg.Write(y);
     }
 
-    void commit(fd_t socket) {
-        WaylandMessage client_msg(send_queue_alloc, id, COMMIT_OPCODE, 0);
+    void commit(wl_fd_t socket) {
+        wl_request client_msg(send_queue_alloc, id, COMMIT_OPCODE, 0);
     }
 
     void handle_event(uint16_t opcode, void *data, size_t size) override {

@@ -46,17 +46,23 @@ class xdg_toplevel : public wl_obj {
         return id;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No event listener supplied for xdg_toplevel");
         }
 
         if (opcode == EV_CONFIGURE_OPCODE) {
-            listener->configure(read_wl_int(data), read_wl_int((char*)data + 4));
+            const wl_int width = reader.read_int();
+            const wl_int height = reader.read_int();
+
+            listener->configure(width, height);
         } else if (opcode == EV_CLOSE_OPCODE) {
             listener->close();
         } else if (opcode == EV_CONFIGURE_BOUNDS_OPCODE) {
-            listener->configure_bounds(read_wl_int(data), read_wl_int((char*)data + 4));
+            const wl_int width = reader.read_int();
+            const wl_int height = reader.read_int();
+
+            listener->configure_bounds(width, height);
         } else if (opcode == EV_WM_CAPABILITIES_OPCODE) {
             listener->wm_capabilities();
         }
@@ -74,7 +80,9 @@ class xdg_toplevel : public wl_obj {
         const wl_string str(strlen(title) + 1, title);
 
         wl_request client_msg(send_queue_alloc, id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
-        client_msg.Write(str);
+        wl_request::writer writer(client_msg);
+
+        writer.write(str);
     }
 
     void set_app_id(const wl_string& app_id) {
@@ -91,7 +99,9 @@ class xdg_toplevel : public wl_obj {
 
     void set_fullscreen(const wl_object output) {
         wl_request client_msg(send_queue_alloc, id, SET_FULLSCREEN_OPCODE, 1);
-        client_msg.Write(output);
+        wl_request::writer writer(client_msg);
+
+        writer.write(output);
     }
 
     void unset_fullscreen() {
@@ -128,23 +138,27 @@ class xdg_surface : public wl_obj {
         wl_id_map.create(*toplevel);
 
         wl_request client_msg(send_queue_alloc, id, 1, 1);
-        client_msg.Write(toplevel->ID());
+        wl_request::writer writer(client_msg);
+        
+        writer.write(toplevel->ID());
 
         return toplevel;
     }
 
     void ack_configure(int serial) {
         wl_request client_msg(send_queue_alloc, id, 4, 1);
-        client_msg.Write(serial);
+        wl_request::writer writer(client_msg);
+
+        writer.write(serial);
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No event listener supplied for xdg_surface");
         }
         
         if (opcode == 0) {
-            listener->configure(*this, read_wl_int(data));
+            listener->configure(*this, reader.read_uint());
         }
     }
 };
@@ -177,24 +191,25 @@ class xdg_wm_base : public wl_obj {
         wl_id_map.create(*x_surface);
 
         wl_request client_msg(send_queue_alloc, id, GET_XDG_SURFACE_OPCODE, 2);
-        client_msg.Write(x_surface->ID());
-        client_msg.Write(surface.id);
+        wl_request::writer writer(client_msg);
+
+        writer.write(x_surface->ID());
+        writer.write(surface.id);
 
         return x_surface;
     }
 
     void pong(const wl_uint serial) {
         wl_request client_msg(send_queue_alloc, id, PONG_OPCODE, 1);
-        client_msg.Write(serial);
+        wl_request::writer writer(client_msg);
+
+        writer.write(serial);
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
-        if (opcode == EV_PING_OPCODE) {
-            if (size != WL_UINT_SIZE) {
-                throw std::runtime_error("Server sent invalid event");
-            }
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
 
-            const wl_uint serial = read_wl_uint(data);
+        if (opcode == EV_PING_OPCODE) {
+            const wl_uint serial = reader.read_uint();
             pong(serial);
         }
     }

@@ -24,7 +24,7 @@ class wl_buffer : public wl_obj {
         is_invalid = true;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         
     }
 };

@@ -27,12 +27,14 @@ class wl_shm_pool {
         wl_buffer* buffer = new wl_buffer(wl_id_assigner.get_id());
 
         wl_request client_msg(send_queue_alloc, id, CREATE_BUFFER_OPCODE, 6);
-        client_msg.Write(buffer->ID());
-        client_msg.Write(offset);
-        client_msg.Write(width);
-        client_msg.Write(height);
-        client_msg.Write(stride);
-        client_msg.Write(format);
+        wl_request::writer writer(client_msg);
+        
+        writer.write(buffer->ID());
+        writer.write(offset);
+        writer.write(width);
+        writer.write(height);
+        writer.write(stride);
+        writer.write(format);
 
         return buffer;
     }
@@ -50,7 +52,9 @@ class wl_shm_pool {
     */
     void resize(wl_int bytes) {
         wl_request client_msg(send_queue_alloc, id, RESIZE_OPCODE, 1);
-        client_msg.Write(bytes);
+        wl_request::writer writer(client_msg);
+
+        writer.write(bytes);
     }
 };
 
@@ -88,25 +92,23 @@ class wl_shm : public wl_obj {
         wl_shm_pool* pool = new wl_shm_pool(wl_id_assigner.get_id());
 
         wl_request client_msg(send_queue_alloc, id, 0, 2);
-        client_msg.Write(pool->ID());
-        client_msg.Write(size);
+        wl_request::writer writer(client_msg);
+        
+        writer.write(pool->ID());
+        writer.write(size);
 
         send_queue.SetAncillary(fd);
 
         return pool;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No listener supplied for wl_shm.");
         }
 
-        if (size != 4) {
-            throw std::runtime_error("Server sent unexpected size.");
-        }
-
         if (opcode == 0) {
-            listener->format(read_wl_uint(data));
+            listener->format(reader.read_uint());
         }
     }
 };

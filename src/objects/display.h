@@ -66,8 +66,11 @@ class wl_display {
 
     wl_registry& get_registry() {
         const wl_new_id registry_id = wl_id_assigner.get_id();
+
         wl_request client_msg(send_queue_alloc, DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
-        client_msg.Write(registry_id);
+        wl_request::writer writer(client_msg);
+        
+        writer.write(registry_id);
 
         wl_registry* registry = create_wl_registry(registry_id);
 
@@ -80,22 +83,23 @@ class wl_display {
 
     }
 
-    void read_events() {
+    /**
+        @brief Reads messages on all non-empty recv 
+        queues.
+    */
+    void read_queues() {
+        recv_queue.Recv(socket);
 
-        event_queue.Recv(socket);
-
-        for (const wl_message msg : event_queue) {
-            const wl_message ev = msg;
-
-            if (ev.object_id == NULL_OBJ_ID) {
+        for (const wl_message msg : recv_queue) {
+            if (msg.object_id == NULL_OBJ_ID) {
                 lumber::err("[Wayland::ERR]: Event was dispatched to null object.");
                 exit(1);
             }
 
-            if (ev.object_id == DISPLAY_OBJ_ID && ev.opcode == EV_ERROR_OPCODE) {
-                wl_object err_object_id = read_wl_object(ev.payload);
-                wl_uint err_opcode = read_wl_uint(ev.payload + 4);
-                wl_string err_msg(ev.payload + 8);
+            if (msg.object_id == DISPLAY_OBJ_ID && msg.opcode == EV_ERROR_OPCODE) {
+                wl_object err_object_id = read_wl_object(msg.payload);
+                wl_uint err_opcode = read_wl_uint(msg.payload + 4);
+                wl_string err_msg(msg.payload + 8);
 
                 std::string output_msg("[Wayland::ERR]: Ran into an error:\n");
                 output_msg += "\tMessage: " + std::string(err_msg);
@@ -103,23 +107,22 @@ class wl_display {
                 lumber::err(output_msg.c_str());
                 
                 exit(1);
-            } else if (ev.object_id == 1 && ev.opcode == EV_DELETE_ID_OPCODE) {
-                wl_object id = read_wl_object(ev.payload);
+            } else if (msg.object_id == 1 && msg.opcode == EV_DELETE_ID_OPCODE) {
+                wl_object id = read_wl_object(msg.payload);
                 wl_id_assigner.destroy_id(id);
                 wl_id_map.destroy(id);
                 continue;
             }
 
-            std::shared_ptr<wl_obj*> object = wl_id_map.get(ev.object_id);
+            std::shared_ptr<wl_obj*> object = wl_id_map.get(msg.object_id);
 
             if (!object) {
-                std::string warning_msg = "[Wayland::WARN]: Received event for non-existent object. (id: ";
-                warning_msg += std::to_string(ev.object_id) + ")";
+                const std::string warning_msg = "[Wayland::WARN]: Received event for unregistered object. (id: " + std::to_string(msg.object_id) + ")";
                 lumber::warn(warning_msg.c_str());
                 continue;
             }
 
-            (*object)->handle_event(ev.opcode, ev.payload, ev.size - WL_EVENT_HEADER_SIZE);
+            (*object)->handle_event(msg.opcode, wl_message::reader(msg.payload, msg.size - WL_EVENT_HEADER_SIZE));
         }
     }
 
@@ -149,6 +152,6 @@ class wl_display {
 
     void roundtrip() {
         dispatch_pending();
-        read_events();
+        read_queues();
     }
 };

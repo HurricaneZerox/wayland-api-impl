@@ -40,16 +40,18 @@ struct wl_surface : public wl_obj {
 
     void attach(wl_fd_t socket, wl_buffer& buffer, wl_int x, wl_int y) {
         wl_request client_msg(send_queue_alloc, id, ATTACH_OPCODE, 3);
-        client_msg.Write(buffer.ID());
-        client_msg.Write(x);
-        client_msg.Write(y);
+        wl_request::writer writer(client_msg);
+
+        writer.write(buffer.ID());
+        writer.write(x);
+        writer.write(y);
     }
 
     void commit(wl_fd_t socket) {
         wl_request client_msg(send_queue_alloc, id, COMMIT_OPCODE, 0);
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
 
     }
 

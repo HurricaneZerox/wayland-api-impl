@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "wl_types.h"
+#include "wl_obj.h"
 
 class wl_id_assigner {
     std::set<wl_object> ids = {};

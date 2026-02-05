@@ -82,14 +82,9 @@ inline uintmax_t wl_align(const char* str) {
     return wl_align(strlen(str) + 1);
 }
 
-class wl_obj {
-
-    public:
-
-    virtual void handle_event(uint16_t opcode, void* data, size_t size) = 0;
-
-    virtual wl_object ID() const noexcept = 0;
-};
+inline bool is_aligned(const wl_uint addr) {
+    return addr % WL_WORD_SIZE == 0;
+}
 
 #define NULL_OBJ_ID 0
 #define DISPLAY_OBJ_ID 1

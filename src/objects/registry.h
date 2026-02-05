@@ -29,20 +29,19 @@ class wl_registry : public wl_obj {
         this->listener = listener;
     }
 
-    void handle_event(uint16_t opcode, void* data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             std::cout << "[Wayland::WARN]: Missing event listener.\n";
             return;
         }
 
-        const wl_uint name(read_wl_uint(data));
-        const wl_string interface((char*)data + WL_UINT_SIZE);
-        const wl_uint version(read_wl_uint((char*)data + wl_align((2 * WL_UINT_SIZE) + interface.Size())));
-
         if (opcode == EV_GLOBAL_OPCODE) {
+            const wl_uint name(reader.read_uint());
+            const wl_string interface(reader.read_string());
+            const wl_uint version(reader.read_uint());
             listener->global(*this, name, interface, version);
         } else if (opcode == EV_GLOBAL_REMOVE_OPCODE) {
-            listener->global_remove(*this, read_wl_uint(data));
+            listener->global_remove(*this, reader.read_uint());
         }
     }
 
@@ -51,11 +50,12 @@ class wl_registry : public wl_obj {
     */
     void bind(wl_uint name, const wl_string& interface, wl_uint version, wl_new_id id) {
         wl_request client_msg(send_queue_alloc, this->id, BIND_OPCODE, 3 + (interface.WordSize() + WL_WORD_SIZE));
+        wl_request::writer writer(client_msg);
     
-        client_msg.Write(name);
-        client_msg.Write(interface);
-        client_msg.Write(version);
-        client_msg.Write(id);
+        writer.write(name);
+        writer.write(interface);
+        writer.write(version);
+        writer.write(id);
     }
 
     wl_object ID() const noexcept override {

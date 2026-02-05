@@ -25,7 +25,7 @@ class wl_keyboard : public wl_obj {
         return id;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No listener supplied for wl_seat.");
         }
@@ -98,24 +98,36 @@ class wl_pointer : public wl_obj {
         return id;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No listener supplied for wl_mouse.");
         }
 
         if (opcode == EV_ENTER_OPCODE) {
-            listener->enter(
-                read_wl_uint(data),
-                read_wl_object((char*)data + 4),
-                read_wl_fixed((char*)data + 8),
-                read_wl_fixed((char*)data + 12)
-            );
+            const wl_uint serial = reader.read_uint();
+            const wl_object surface = reader.read_object();
+            const wl_fixed surface_x = reader.read_fixed();
+            const wl_fixed surface_y = reader.read_fixed();
+
+            listener->enter(serial, surface, surface_x, surface_y);
         } else if (opcode == EV_LEAVE_OPCODE) {
-            listener->leave(read_wl_uint(data), read_wl_object((char*)data + 4));
+            const wl_uint serial = reader.read_uint();
+            const wl_object surface = reader.read_object();
+
+            listener->leave(serial, surface);
         } else if (opcode == EV_MOTION_OPCODE) {
-            listener->motion(read_wl_uint(data), read_wl_fixed((char*)data + 4), read_wl_fixed((char*)data + 8));
+            const wl_uint serial = reader.read_uint();
+            const wl_fixed surface_x = reader.read_fixed();
+            const wl_fixed surface_y = reader.read_fixed();
+
+            listener->motion(serial, surface_x, surface_y);
         } else if (opcode == EV_BUTTON_OPCODE) {
-            listener->button(read_wl_uint(data), read_wl_uint((char*)data + 4), read_wl_uint((char*)data + 8), (button_state)read_wl_uint((char*)data + 12));
+            const wl_uint serial = reader.read_uint();
+            const wl_uint time = reader.read_uint();
+            const wl_uint button = reader.read_uint();
+            const button_state state = static_cast<button_state>(reader.read_uint());
+
+            listener->button(serial, time, button, state);
         }
     }
 };
@@ -142,7 +154,7 @@ class wl_seat : public wl_obj {
         return id;
     }
 
-    void handle_event(uint16_t opcode, void *data, size_t size) override {
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
             throw std::runtime_error("No listener supplied for wl_seat.");
         }
@@ -152,7 +164,9 @@ class wl_seat : public wl_obj {
         wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
 
         wl_request client_msg(send_queue_alloc, id, 0, 1);
-        client_msg.Write(mouse->ID());
+        wl_request::writer writer(client_msg);
+
+        writer.write(mouse->ID());
 
         wl_id_map.create(*mouse);
 

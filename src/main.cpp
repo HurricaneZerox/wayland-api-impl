@@ -98,7 +98,6 @@ struct Framebuffer {
     }
 
     void Resize(const size_t width, const size_t height) {
-
         if (buffer) {
             buffer->destroy();
             buffer = nullptr;
@@ -135,11 +134,8 @@ struct xdg_surface::listener xdg_surface_listener {
 
 struct xdg_toplevel::listener xdg_toplevel_listener {
     .configure = [](const wl_int x, const wl_int y) {
-        if ((wl_uint)x == 0 || (wl_uint)y == 0) {
-            return;
-        } 
+        if ((wl_uint)x == 0 || (wl_uint)y == 0) { return; }
 
-        //std::cout << "Configure: " << x << ", " << y << '\n';
         screen_width = x;
         screen_height = y;
 
@@ -169,6 +165,9 @@ struct wl_pointer::listener wl_mouse_listener {
         
     },
     .motion = [](wl_uint serial, wl_fixed surface_x, wl_fixed surface_y) {
+        
+    },
+    .button = [](wl_uint, wl_uint, wl_uint, enum wl_pointer::button_state) {
         
     },
 };

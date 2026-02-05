@@ -1,5 +1,6 @@
 #include "queue.h"
 
+#include <stdexcept>
 #include <sys/socket.h>
 
 using namespace wl;
@@ -13,6 +14,10 @@ void recv_queue::Recv(const wl_fd_t socket) {
 
     if (new_size > std::numeric_limits<size_type>::max()) {
         throw std::runtime_error("Received more data than protocol allows");
+    }
+
+    if (!is_aligned(new_size)) {
+        lumber::err("[Wayland::ERR]: Fatal stream frame misalignment (did not receive multiple of WORD bytes).");
     }
 
     current_size = new_size;

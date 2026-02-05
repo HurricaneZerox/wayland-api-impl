@@ -20,7 +20,9 @@ class wl_compositor {
         wl_id_map.create(*surface);
 
         wl_request client_msg(send_queue_alloc, id, 0, 1);
-        client_msg.Write(surface->id);
+        wl_request::writer writer(client_msg);
+
+        writer.write(surface->id);
 
         return surface;
     }

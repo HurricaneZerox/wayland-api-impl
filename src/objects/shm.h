@@ -2,6 +2,7 @@
 
 #include "../wl_types.h"
 #include "../wl_state.h"
+#include "../wl_enums.h"
 
 #include "buffer.h"
 
@@ -23,7 +24,7 @@ class wl_shm_pool {
         return id;
     }
 
-    wl_buffer* create_buffer(wl_fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, wl_uint format) {
+    wl_buffer* create_buffer(wl_fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, Format format) {
         wl_buffer* buffer = new wl_buffer(wl_id_assigner.get_id());
 
         wl_message client_msg(id, CREATE_BUFFER_OPCODE, 6);
@@ -34,7 +35,7 @@ class wl_shm_pool {
         writer.write(width);
         writer.write(height);
         writer.write(stride);
-        writer.write(format);
+        writer.write(static_cast<wl_uint>(format));
 
         return buffer;
     }

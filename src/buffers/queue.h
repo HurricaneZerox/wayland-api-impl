@@ -2,6 +2,7 @@
 
 #include "../wl_event.h"
 
+#include <memory>
 #include <span>
 
 namespace wl {
@@ -25,7 +26,7 @@ namespace wl {
 
         static constexpr size_type PAGE_SIZE = 4096;
 
-        const value_ptr buffer = static_cast<value_ptr>(malloc(PAGE_SIZE));
+        const std::unique_ptr<value_ptr> buffer = std::make_unique<value_ptr>(static_cast<value_ptr>(malloc(PAGE_SIZE)));
         size_type current_size = 0;
 
         public:

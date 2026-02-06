@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 #include <stdexcept>
@@ -21,6 +22,10 @@
 #include "objects/compositor.h"
 #include "objects/shm.h"
 
+struct BMPImage {
+
+};
+
 /**
     Use-case example
 */
@@ -33,7 +38,7 @@ wl_seat* seat;
 int resizes = 0;
 
 wl_buffer* create_buffer(wl_shm_pool& pool, wl_int width, wl_int height) {
-    wl_buffer* buffer = pool.create_buffer(display.socket, 0, width, height, width * 4, 0);
+    wl_buffer* buffer = pool.create_buffer(display.socket, 0, width, height, width * 4, Format::ARGB8888);
     wl_id_map.create(*buffer);
     surface->commit(display.socket);
     return buffer;
@@ -77,9 +82,9 @@ struct Framebuffer {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 unsigned char* pixel = data + ((y * width + x) * 4);
-                pixel[0] = 0;
-                pixel[1] = ((float) x / width) * 255;
-                pixel[2] = ((float) y / height) * 255;
+                pixel[0] = ((float) x / width) * 255;
+                pixel[1] = ((float) y / height) * 255;
+                pixel[2] = 0;
                 pixel[3] = 255;
             }
         }
@@ -159,16 +164,34 @@ struct wl_seat::listener wl_seat_listener {
 
 struct wl_pointer::listener wl_mouse_listener {
     .enter = [](wl_uint serial, wl_object surface, wl_fixed surface_x, wl_fixed surface_y) {
-        
+        std::cout << "Mouse entered: " << "surface_x: " << surface_x << ", " << "surface_y: " << surface_y << '\n';
     },
     .leave = [](wl_uint serial, wl_object surface) {
-        
+        std::cout << "Mouse left" << '\n';
     },
     .motion = [](wl_uint serial, wl_fixed surface_x, wl_fixed surface_y) {
-        
+        //std::cout << "Mouse moved: " << "surface_x: " << surface_x << ", " << "surface_y: " << surface_y << '\n';
     },
-    .button = [](wl_uint, wl_uint, wl_uint, enum wl_pointer::button_state) {
-        
+    .button = [](wl_uint serial, wl_uint time, wl_uint button, enum wl_pointer::button_state state) {
+        std::cout << "Mouse clicked: " << "button: " << button << ", " << "state: " << (wl_uint)state << '\n';
+    },
+    .axis = [](wl_uint time, enum wl_pointer::axis axis, wl_fixed value) {
+        std::cout << "Mouse axis: " << "axis: " << (wl_uint)axis << ", " << "value: " << value << '\n';
+    },
+    .frame = []() {
+        //std::cout << "Mouse frame" << '\n';
+    },
+    .axis_source = [](enum wl_pointer::axis_source source) {
+        //std::cout << "Mouse axis source" << '\n';
+    },
+    .axis_discrete = [](enum wl_pointer::axis axis, const wl_int discrete) {
+        //std::cout << "Mouse axis discrete: " << discrete << '\n';
+    },
+    .axis_value120 = [](enum wl_pointer::axis axis, const wl_int value120) {
+        //std::cout << "Mouse axis value120: " << value120 << '\n';
+    },
+    .axis_relative_direction = [](enum wl_pointer::axis axis, enum wl_pointer::axis_relative_direction relative_direction) {
+        //std::cout << "Mouse axis relative direction: " << (wl_uint)relative_direction << '\n';
     },
 };
 
@@ -180,8 +203,6 @@ void on_global_registered(wl_registry& registry, const wl_uint name, const wl_st
     if (interface.Compare("wl_shell_surface") == 0) {
         std::cout << "SUPPORTS OLD SHELL INTERFACE\n";
     }
-
-    std::cout << interface << '\n';
 
     if (interface.Compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.get_id();
@@ -202,6 +223,8 @@ void on_global_registered(wl_registry& registry, const wl_uint name, const wl_st
         registry.bind(name, interface, version, id);
         seat = new wl_seat(id);
         wl_id_map.create(*seat);
+    } else if (interface.Compare("xdg_toplvel_icon_manager_v1") == 0) {
+        std::cout << "toplevel icon support\n";
     }
 }
 
@@ -216,6 +239,9 @@ struct wl_shm::listener wl_shm_listener {
 };
 
 int main() {
+
+    struct wl_fixed_t fixed_n(2.5f);
+    std::cout << fixed_n.flot() << '\n';
 
     wl_registry& registry = display.get_registry();
     registry.set_listener(&registry_listener);

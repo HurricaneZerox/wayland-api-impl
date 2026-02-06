@@ -79,7 +79,7 @@ class wl_pointer : public wl_obj {
         void (*leave)(wl_uint serial, wl_object surface);
         void (*motion)(wl_uint serial, wl_fixed surface_x, wl_fixed surface_y);
         void (*button)(wl_uint serial, wl_uint time, wl_uint button, enum button_state state);
-        void (*axis)(wl_uint time, enum axis axis, wl_uint value);
+        void (*axis)(wl_uint time, enum axis axis, wl_fixed value);
         void (*frame)();
         void (*axis_source)(enum axis_source axis_source);
         void (*axis_stop)(wl_uint serial, enum axis axis);
@@ -128,6 +128,33 @@ class wl_pointer : public wl_obj {
             const button_state state = static_cast<button_state>(reader.read_uint());
 
             listener->button(serial, time, button, state);
+        } else if (opcode == EV_AXIS_OPCODE) {
+            const wl_uint time = reader.read_uint();
+            const enum axis axis = static_cast<enum axis>(reader.read_uint());
+            const wl_fixed value = reader.read_fixed();
+
+            listener->axis(time, axis, value);
+        } else if (opcode == EV_FRAME_OPCODE) {
+            listener->frame();
+        } else if (opcode == EV_AXIS_SOURCE_OPCODE) {
+            const axis_source source = static_cast<axis_source>(reader.read_uint());
+
+            listener->axis_source(source);
+        } else if (opcode == EV_AXIS_DISCRETE_OPCODE) {
+            const axis axis = static_cast<enum axis>(reader.read_uint());
+            const wl_int discrete = static_cast<wl_int>(reader.read_int());
+
+            listener->axis_discrete(axis, discrete);
+        } else if (opcode == EV_AXIS_VALUE120_OPCODE) {
+            const axis axis = static_cast<enum axis>(reader.read_uint());
+            const wl_int value120 = static_cast<wl_int>(reader.read_int());
+
+            listener->axis_value120(axis, value120);
+        } else if (opcode == EV_AXIS_RELATIVE_DIRECTION_OPCODE) {
+            const axis axis = static_cast<enum axis>(reader.read_uint());
+            const axis_relative_direction relative_direction = static_cast<axis_relative_direction>(reader.read_uint());
+
+            listener->axis_relative_direction(axis, relative_direction);
         }
     }
 };

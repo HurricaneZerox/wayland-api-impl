@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
+#include <string>
 
 /**
     Type definitions for Wayland's protocol-defined
@@ -14,6 +16,23 @@ using wl_uint = uint32_t;
 using wl_fixed = float_t;
 using wl_object = uint32_t;
 using wl_new_id = uint32_t;
+
+struct wl_fixed_t {
+    uint32_t data;
+
+
+    wl_fixed_t(float value) {
+        data = (uint32_t)value;
+    };
+
+    operator float() {
+        return (float)data;
+    }
+
+    float flot() {
+        return (float)data;
+    }
+};
 
 /**
     Special case types
@@ -51,7 +70,14 @@ inline wl_object read_wl_object(const void* data) {
 }
 
 inline wl_fixed read_wl_fixed(const void* data) {
-    return *reinterpret_cast<const wl_fixed*>(data);
+    const int32_t bit_data = *(int32_t*)data;
+    int32_t integer_part = (bit_data >> 8) & 0x7FFFFF;
+
+    if (bit_data >> 31) {
+        integer_part = -((1 << 23) - integer_part);
+    }
+
+    return integer_part + static_cast<float>(bit_data & 0xFF) / UINT8_MAX;
 }
 
 template<class T>

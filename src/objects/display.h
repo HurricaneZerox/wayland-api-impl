@@ -43,6 +43,14 @@ inline wl_fd_t create_wayland_socket() {
 class wl_registry;
 wl_registry* create_wl_registry(const wl_new_id id);
 
+/**
+    @brief Represents a connection to the Wayland compositor.
+
+    All requests, events, and enums have been implemented
+    apart from `sync`.
+
+    @warning This should be used only by Wayland clients.
+*/
 class wl_display {
 
     static constexpr wl_uint SYNC_OPCODE = 0;

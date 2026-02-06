@@ -6,7 +6,7 @@
 using namespace wl;
 
 void recv_queue::Recv(const wl_fd_t socket) {
-    const ssize_t new_size = recv(socket, buffer, PAGE_SIZE, 0);
+    const ssize_t new_size = recv(socket, *buffer.get(), PAGE_SIZE, 0);
 
     if (new_size < 0) {
         throw std::runtime_error("Failed to receive data");
@@ -24,15 +24,15 @@ void recv_queue::Recv(const wl_fd_t socket) {
 }
 
 recv_queue::iterator recv_queue::begin() const noexcept {
-    return recv_queue::iterator(buffer, current_size);
+    return recv_queue::iterator(*buffer.get(), current_size);
 }
 
 recv_queue::iterator recv_queue::end() const noexcept {
-    return recv_queue::iterator(buffer + current_size, current_size);
+    return recv_queue::iterator(*buffer.get() + current_size, current_size);
 }
 
 recv_queue::~recv_queue() {
-    free(buffer);
+    
 }
 
 recv_queue::iterator::iterator(recv_queue::value_ptr buffer, size_type size)

@@ -19,6 +19,8 @@ inline void warn(const char* msg) {
 
 inline void err(const char* msg) {
     std::cout << "\033[" << RED_FG << "m" << msg << "\033[0m\n";
+    std::cout.flush();
+    exit(1);
 }
 
 }

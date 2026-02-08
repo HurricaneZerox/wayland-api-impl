@@ -1,7 +1,7 @@
 #pragma once
 
 #include "wl_id.h"
-#include "buffers/queue.h"
+#include "../buffers/queue.h"
 
 inline wl_id_assigner wl_id_assigner;
 inline wl_id_map wl_id_map;

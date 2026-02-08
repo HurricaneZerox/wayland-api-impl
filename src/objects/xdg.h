@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
 
 #include "surface.h"
 
@@ -80,7 +80,7 @@ class xdg_toplevel : public wl_obj {
     void set_title(const char* title) {
         const wl_string str(strlen(title) + 1, title);
 
-        wl_message client_msg(id, SET_TITLE_OPCODE, str.WordSize() + WL_WORD_SIZE);
+        wl_message client_msg(id, SET_TITLE_OPCODE, str.word_size() + WL_WORD_SIZE);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(str);
@@ -114,6 +114,23 @@ class xdg_toplevel : public wl_obj {
     }
 };
 
+class xdg_positioner : public wl_obj {
+    wl_object id;
+    wl_fd_t socket;
+
+    public:
+
+    xdg_positioner(const wl_new_id id, wl_fd_t socket) : id(id), socket(socket) {}
+
+    void handle_event(uint16_t opcode, wl_message::reader reader) override {
+
+    }
+
+    wl_object ID() const noexcept override {
+        return id;
+    }
+};
+
 class xdg_surface : public wl_obj {
 
     wl_new_id id;
@@ -137,7 +154,7 @@ class xdg_surface : public wl_obj {
 
     void destroy();
 
-    xdg_toplevel* get_toplevel(const wl_fd_t socket) {
+    xdg_toplevel& get_toplevel(const wl_fd_t socket) {
         this->socket = socket;
         xdg_toplevel* toplevel = new xdg_toplevel(wl_id_assigner.get_id());
         wl_id_map.create(*toplevel);
@@ -147,7 +164,11 @@ class xdg_surface : public wl_obj {
         
         writer.write(toplevel->ID());
 
-        return toplevel;
+        return *toplevel;
+    }
+
+    void get_popup() {
+
     }
 
     void ack_configure(int serial) {
@@ -169,7 +190,7 @@ class xdg_surface : public wl_obj {
 };
 
 class xdg_wm_base : public wl_obj {
-    wl_object id;
+    const wl_object id;
     wl_fd_t socket;
 
     static constexpr wl_uint DESTROY_OPCODE = 0;
@@ -181,15 +202,23 @@ class xdg_wm_base : public wl_obj {
 
     public:
 
-    xdg_wm_base(const wl_new_id id) : id(id) {
-
-    }
+    xdg_wm_base(const wl_new_id id) : id(id) {}
 
     void destroy();
 
-    void create_positioner();
+    xdg_positioner& create_positioner() {
+        xdg_positioner* positioner = new xdg_positioner(wl_id_assigner.get_id(), socket);
+        wl_id_map.create(*positioner);
 
-    xdg_surface* get_xdg_surface(const wl_fd_t socket, wl_surface& surface) {
+        wl_message client_msg(id, CREATE_POSITIONER_OPCODE, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
+
+        writer.write(positioner->ID());
+
+        return *positioner;
+    }
+
+    xdg_surface& get_xdg_surface(const wl_fd_t socket, wl_surface& surface) {
         xdg_surface* x_surface = new xdg_surface(wl_id_assigner.get_id());
         wl_id_map.create(*x_surface);
 
@@ -199,7 +228,7 @@ class xdg_wm_base : public wl_obj {
         writer.write(x_surface->ID());
         writer.write(surface.id);
 
-        return x_surface;
+        return *x_surface;
     }
 
     void pong(const wl_uint serial) {

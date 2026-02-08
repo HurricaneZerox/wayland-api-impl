@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
+#include "surface.h"
 
 /**
     @brief Keyboard
@@ -9,10 +10,31 @@
 class wl_keyboard : public wl_obj {
     wl_object id;
 
+    static constexpr wl_uint RELEASE_OPCODE = 0;
+
+    static constexpr wl_uint EV_KEYMAP_OPCODE = 0;
+    static constexpr wl_uint EV_ENTER_OPCODE = 1;
+    static constexpr wl_uint EV_LEAVE_OPCODE = 2;
+    static constexpr wl_uint EV_KEY_OPCODE = 3;
+    static constexpr wl_uint EV_MODIFIERS_OPCODE = 4;
+    static constexpr wl_uint EV_REPEAT_INFO_OPCODE = 5;
+
     public:
+
+    enum class key_state : wl_uint {
+        released,
+        pressed,
+        repeated,
+    };
+
+    enum class keymap_format : wl_uint {
+        no_keymap,
+        xkb_v1,
+    };
 
     struct listener {
         
+        void (*key)(wl_uint serial, wl_uint time, wl_uint key, key_state state);
     };
 
     listener* listener = nullptr;
@@ -27,7 +49,26 @@ class wl_keyboard : public wl_obj {
 
     void handle_event(uint16_t opcode, wl_message::reader reader) override {
         if (!listener) {
-            throw std::runtime_error("No listener supplied for wl_seat.");
+            throw std::runtime_error("No listener supplied for wl_keybard.");
+        }
+
+        if (opcode == EV_KEYMAP_OPCODE) {
+            //std::cout << "KEYMAP\n";
+        } else if (opcode == EV_ENTER_OPCODE) {
+            //std::cout << "ENTER\n";
+        } else if (opcode == EV_LEAVE_OPCODE) {
+            //std::cout << "LEAVE\n";
+        } else if (opcode == EV_KEY_OPCODE) {
+            const wl_uint serial = reader.read_uint();
+            const wl_uint time = reader.read_uint();
+            const wl_uint key = reader.read_uint();
+            const key_state state = static_cast<key_state>(reader.read_uint());
+
+            listener->key(serial, time, key, state);
+        } else if (opcode == EV_MODIFIERS_OPCODE) {
+            //std::cout << "MOD\n";
+        } else if (opcode == EV_REPEAT_INFO_OPCODE) {
+            //std::cout << "REPEAT\n";
         }
     }
 };
@@ -37,6 +78,9 @@ class wl_keyboard : public wl_obj {
 */
 class wl_pointer : public wl_obj {
     wl_object id;
+
+    static constexpr wl_uint SET_CURSOR_OPCODE = 0;
+    static constexpr wl_uint RELEASE_OPCODE = 1;
 
     static constexpr wl_uint EV_ENTER_OPCODE = 0;
     static constexpr wl_uint EV_LEAVE_OPCODE = 1;
@@ -96,6 +140,29 @@ class wl_pointer : public wl_obj {
 
     wl_object ID() const noexcept override {
         return id;
+    }
+
+    /**
+        @brief Sets the pointer image (cursor).
+
+        If @p surface is `nullptr`, then this request will
+        hide the cursor.
+    */
+    void set_cursor(wl_uint serial, const wl_surface* surface, wl_uint hotspot_x, wl_uint hotspot_y) {
+        const wl_object id = surface != nullptr ? surface->ID() : NULL_OBJ_ID;
+
+        wl_message client_msg(this->id, SET_CURSOR_OPCODE, 4);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
+
+        writer.write(serial);
+        writer.write(id);
+        writer.write(hotspot_x);
+        writer.write(hotspot_y);
+    }
+
+    void release() {
+        wl_message client_msg(this->id, RELEASE_OPCODE, 0);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     }
 
     void handle_event(uint16_t opcode, wl_message::reader reader) override {
@@ -165,6 +232,11 @@ class wl_pointer : public wl_obj {
 class wl_seat : public wl_obj {
     wl_object id;
 
+    static constexpr wl_uint GET_POINTER_OPCODE = 0;
+    static constexpr wl_uint GET_KEYBOARD_OPCODE = 1;
+    static constexpr wl_uint GET_TOUCH_OPCODE = 2;
+    static constexpr wl_uint RELEASE_OPCODE = 3;
+
     public:
 
     struct listener {
@@ -190,7 +262,7 @@ class wl_seat : public wl_obj {
     wl_pointer* get_mouse() {
         wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
 
-        wl_message client_msg(id, 0, 1);
+        wl_message client_msg(id, GET_POINTER_OPCODE, 1);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
 
         writer.write(mouse->ID());
@@ -200,8 +272,17 @@ class wl_seat : public wl_obj {
         return mouse;
     }
 
-    void get_keyboard() {
-        
+    wl_keyboard* get_keyboard() {
+        wl_keyboard* keyboard = new wl_keyboard(wl_id_assigner.get_id());
+
+        wl_message client_msg(id, GET_KEYBOARD_OPCODE, 1);
+        wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
+
+        writer.write(keyboard->ID());
+
+        wl_id_map.create(*keyboard);
+
+        return keyboard;
     }
 
     void release() {

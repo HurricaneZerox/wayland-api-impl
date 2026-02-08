@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
 #include <string>
 
 class wl_registry : public wl_obj {
@@ -49,7 +49,7 @@ class wl_registry : public wl_obj {
         Binds a server-side global to a client-side ID.
     */
     void bind(wl_uint name, const wl_string& interface, wl_uint version, wl_new_id id) {
-        wl_message client_msg(this->id, BIND_OPCODE, 3 + (interface.WordSize() + WL_WORD_SIZE));
+        wl_message client_msg(this->id, BIND_OPCODE, 3 + (interface.word_size() + WL_WORD_SIZE));
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
     
         writer.write(name);

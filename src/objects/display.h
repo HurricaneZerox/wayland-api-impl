@@ -5,8 +5,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
 
 #include "../lumber.h"
 

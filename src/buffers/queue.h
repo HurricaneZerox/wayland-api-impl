@@ -1,9 +1,10 @@
 #pragma once
 
-#include "../wl_event.h"
+#include "../wl_utils/wl_event.h"
 
 #include <memory>
 #include <span>
+#include <vector>
 
 namespace wl {
     /**
@@ -83,7 +84,7 @@ namespace wl {
         size_type current_size = 0;
         value_ptr access_ptr = buffer;
         wl_uint msg_n = 0;
-        wl_fd_t fd = -1;
+        std::vector<int> fds;
 
         public:
 
@@ -101,7 +102,7 @@ namespace wl {
         */
         value_ptr Allocate(const wl_uint bytes);
 
-        void SetAncillary(int data) noexcept;
+        void AddFD(int data) noexcept;
 
         wl_uint Send(const wl_fd_t socket);
 

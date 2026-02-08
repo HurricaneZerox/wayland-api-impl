@@ -84,47 +84,40 @@ send_queue::value_ptr send_queue::Allocate(const wl_uint bytes) {
     return current;
 }
 
-void send_queue::SetAncillary(int data) noexcept {
-    fd = data;
+void send_queue::AddFD(int data) noexcept {
+    fds.push_back(data);
 }
 
 wl_uint send_queue::Send(const wl_fd_t socket) {
-    if (fd != -1) {
+    char cmsgbuf[CMSG_SPACE(sizeof(int))];
 
-        char cmsgbuf[CMSG_SPACE(sizeof(int))];
+    struct iovec vec {
+        .iov_base = buffer,
+        .iov_len = Offset(),
+    };
 
-        struct iovec vec {
-            .iov_base = buffer,
-            .iov_len = Offset(),
-        };
+    struct msghdr msg {
+        .msg_iov = &vec,
+        .msg_iovlen = 1,
+        .msg_control = cmsgbuf,
+        .msg_controllen = CMSG_SPACE(sizeof(int)),
+    };
+    
+    struct cmsghdr* cmsg;
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(WL_FD_SIZE * fds.size());
 
-        struct msghdr msg {
-            .msg_iov = &vec,
-            .msg_iovlen = 1,
-            .msg_control = cmsgbuf,
-            .msg_controllen = CMSG_SPACE(sizeof(int)),
-        };
-        
-        struct cmsghdr* cmsg;
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        cmsg->cmsg_len = CMSG_LEN(WL_FD_SIZE);
+    memcpy(CMSG_DATA(cmsg), fds.data(), WL_FD_SIZE * fds.size());
 
-        memcpy(CMSG_DATA(cmsg), &fd, WL_FD_SIZE);
-
-        if (sendmsg(socket, &msg, 0) != Offset()) {
-            throw std::runtime_error("Failed to send command");
-        }
-    } else {
-        if (send(socket, buffer, Offset(), 0) != Offset()) {
-            throw std::runtime_error("Failed to send entire send queue");
-        }
+    if (sendmsg(socket, &msg, 0) != Offset()) {
+        throw std::runtime_error("Failed to send command");
     }
 
     const wl_uint prev_msg_n = msg_n;
 
-    fd = -1;
+    fds.clear();
     access_ptr = buffer;
     return prev_msg_n;
 }

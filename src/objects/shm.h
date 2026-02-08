@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
-#include "../wl_enums.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
+#include "../wl_utils/wl_enums.h"
 
 #include "buffer.h"
 
@@ -99,7 +99,7 @@ class wl_shm : public wl_obj {
         writer.write(pool->ID());
         writer.write(size);
 
-        send_queue.SetAncillary(fd);
+        send_queue.AddFD(fd);
 
         return pool;
     }

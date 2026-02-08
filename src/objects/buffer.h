@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
 
 class wl_buffer : public wl_obj {
     wl_object id;

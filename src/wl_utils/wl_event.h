@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "lumber.h"
+#include "../lumber.h"
 #include "wl_types.h"
 #include "wl_string.h"
 
@@ -85,7 +85,7 @@ class wl_message::reader {
 
     wl_string read_string() {
         wl_string value(cursor);
-        advance_cursor(value.SerialisedSize());
+        advance_cursor(value.serialised_size());
         return value;
     }
 
@@ -135,13 +135,13 @@ class wl_message::writer {
     }
 
     void write(const wl_string& string) {
-        const wl_uint str_len = string.Size();
-        const wl_uint padded_str_len = string.SerialisedSize();
+        const wl_uint str_len = string.size();
+        const wl_uint padded_str_len = string.serialised_size();
 
         from_uint(str_len, cursor);
         memcpy(cursor + WL_UINT_SIZE, string, str_len);
         
-        advance_cursor(string.SerialisedSize());
+        advance_cursor(string.serialised_size());
     }
 };
 

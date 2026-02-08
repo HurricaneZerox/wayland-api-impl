@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../wl_types.h"
-#include "../wl_state.h"
+#include "../wl_utils/wl_types.h"
+#include "../wl_utils/wl_state.h"
 
 #include "buffer.h"
 

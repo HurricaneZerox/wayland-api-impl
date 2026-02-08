@@ -3,8 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
-#include <string>
 
 /**
     Type definitions for Wayland's protocol-defined

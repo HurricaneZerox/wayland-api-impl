@@ -25,7 +25,7 @@ class wl_shm_pool {
     }
 
     wl_buffer* create_buffer(wl_fd_t socket, wl_int offset, wl_int width, wl_int height, wl_int stride, Format format) {
-        wl_buffer* buffer = new wl_buffer(wl_id_assigner.get_id());
+        wl_buffer* buffer = new wl_buffer(wl_id_assigner.request_id());
 
         wl_message client_msg(id, CREATE_BUFFER_OPCODE, 6);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
@@ -91,7 +91,7 @@ class wl_shm : public wl_obj {
     }
 
     wl_shm_pool* create_pool(const wl_fd_t socket, wl_fd_t fd, size_t size) {
-        wl_shm_pool* pool = new wl_shm_pool(wl_id_assigner.get_id());
+        wl_shm_pool* pool = new wl_shm_pool(wl_id_assigner.request_id());
 
         wl_message client_msg(id, 0, 2);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);

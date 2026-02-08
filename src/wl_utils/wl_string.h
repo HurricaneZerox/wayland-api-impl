@@ -16,7 +16,7 @@ class wl_string {
 
     private:
 
-    static size_t total_alloc;
+    static size_type total_alloc;
 
     size_type size_n = 0;
     value_type* str = nullptr;

@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <sys/socket.h>
+#include <limits>
 
 using namespace wl;
 

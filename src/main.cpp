@@ -243,7 +243,6 @@ struct wl_pointer::listener wl_mouse_listener {
 };
 
 struct wl_keyboard::listener wl_keyboard_listener {
-
     .key = [](wl_uint serial, wl_uint time, wl_uint key, wl_keyboard::key_state state) {
         //std::cout << "KEY\n";
         //std::cout << key << '\n';
@@ -254,21 +253,21 @@ xdg_wm_base* wm_base;
 
 void on_global_registered(wl_registry& registry, const wl_uint name, const wl_string& interface, const wl_uint version) {
     if (interface.compare("wl_compositor") == 0) {
-        const wl_new_id id = wl_id_assigner.get_id();
+        const wl_new_id id = wl_id_assigner.request_id();
         registry.bind(name, interface, version, id);
         compositor = wl_compositor(id);
     } else if (interface.compare("wl_shm") == 0) {
-        const wl_new_id id = wl_id_assigner.get_id();
+        const wl_new_id id = wl_id_assigner.request_id();
         registry.bind(name, interface, version, id);
         shm = new wl_shm(id);
         wl_id_map.create(*shm);
     } else if (interface.compare("xdg_wm_base") == 0) {
-        const wl_new_id id = wl_id_assigner.get_id();
+        const wl_new_id id = wl_id_assigner.request_id();
         registry.bind(name, interface, version, id);
         wm_base = new xdg_wm_base(id);
         wl_id_map.create(*wm_base);
     } else if (interface.compare("wl_seat") == 0) {
-        const wl_new_id id = wl_id_assigner.get_id();
+        const wl_new_id id = wl_id_assigner.request_id();
         registry.bind(name, interface, version, id);
         seat = new wl_seat(id);
         wl_id_map.create(*seat);
@@ -288,9 +287,6 @@ struct wl_shm::listener wl_shm_listener {
 };
 
 int main() {
-
-    wl_string str = wl_string::from_c_str("Hello, World!");
-    std::cout << str.c_str() << '\n';
 
     wl_registry& registry = display.get_registry();
     registry.set_listener(&registry_listener);

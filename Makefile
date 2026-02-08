@@ -1,2 +1,11 @@
+CPP_COMPILER=g++
+
+SRC := $(shell find . -name '*.cpp')
+OBJ = $(SRC:.cpp=.o)
+
+TARGET=build/a
+
 default:
-	g++ src/main.cpp src/buffers/queue.cpp src/wl_utils/wl_string.cpp -o a
+	@echo $(OBJ)
+
+	$(CPP_COMPILER) $(SRC) -o $(TARGET)

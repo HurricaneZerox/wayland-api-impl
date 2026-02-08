@@ -1,6 +1,7 @@
 #include "../wl_utils/wl_string.h"
 
 #include <stdexcept>
+#include <cstring>
 
 void wl_string::str_free() {
     if (!str) { return; }

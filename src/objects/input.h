@@ -260,7 +260,7 @@ class wl_seat : public wl_obj {
     }
 
     wl_pointer* get_mouse() {
-        wl_pointer* mouse = new wl_pointer(wl_id_assigner.get_id());
+        wl_pointer* mouse = new wl_pointer(wl_id_assigner.request_id());
 
         wl_message client_msg(id, GET_POINTER_OPCODE, 1);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
@@ -273,7 +273,7 @@ class wl_seat : public wl_obj {
     }
 
     wl_keyboard* get_keyboard() {
-        wl_keyboard* keyboard = new wl_keyboard(wl_id_assigner.get_id());
+        wl_keyboard* keyboard = new wl_keyboard(wl_id_assigner.request_id());
 
         wl_message client_msg(id, GET_KEYBOARD_OPCODE, 1);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);

@@ -73,7 +73,7 @@ class wl_display {
     wl_display() : socket(create_wayland_socket()) {}
 
     wl_registry& get_registry() {
-        const wl_new_id registry_id = wl_id_assigner.get_id();
+        const wl_new_id registry_id = wl_id_assigner.request_id();
 
         wl_message client_msg(DISPLAY_OBJ_ID, GET_REGISTRY_OPCODE, 1);
         wl_message::writer writer = client_msg.new_writer(send_queue_alloc);
@@ -117,7 +117,7 @@ class wl_display {
                 exit(1);
             } else if (msg.object_id == 1 && msg.opcode == EV_DELETE_ID_OPCODE) {
                 wl_object id = read_wl_object(msg.payload);
-                wl_id_assigner.destroy_id(id);
+                wl_id_assigner.release_id(id);
                 wl_id_map.destroy(id);
                 continue;
             }

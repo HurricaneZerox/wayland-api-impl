@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cmath>
 #include <cstdint>
-#include <cstring>
 
 /**
     Type definitions for Wayland's protocol-defined
@@ -11,26 +9,9 @@
 
 using wl_int = int32_t;
 using wl_uint = uint32_t;
-using wl_fixed = float_t;
+using wl_fixed = float;
 using wl_object = uint32_t;
 using wl_new_id = uint32_t;
-
-struct wl_fixed_t {
-    uint32_t data;
-
-
-    wl_fixed_t(float value) {
-        data = (uint32_t)value;
-    };
-
-    operator float() {
-        return (float)data;
-    }
-
-    float flot() {
-        return (float)data;
-    }
-};
 
 /**
     Special case types
@@ -55,61 +36,65 @@ using wl_fd_t = wl_uint;
 #define WL_NEW_ID_MIN 2
 #define WL_NEW_ID_MAX 0xFEFFFFFF
 
-inline wl_int read_wl_int(const void* data) {
-    return *reinterpret_cast<const wl_int*>(data);
-}
+/**
+    @brief Reads the next four bytes of `data`
+    as a wl_int value.
+*/
+wl_int read_wl_int(const void* data);
 
-inline wl_uint read_wl_uint(const void* data) {
-    return *reinterpret_cast<const wl_uint*>(data);
-}
+/**
+    @brief Reads the next four bytes of `data`
+    as a wl_uint value.
+*/
+wl_uint read_wl_uint(const void* data);
 
-inline wl_object read_wl_object(const void* data) {
-    return *reinterpret_cast<const wl_object*>(data);
-}
+/**
+    @brief Reads the next four bytes of `data`
+    as a wl_object value.
+*/
+wl_object read_wl_object(const void* data);
 
-inline wl_fixed read_wl_fixed(const void* data) {
-    const int32_t bit_data = *(int32_t*)data;
-    int32_t integer_part = (bit_data >> 8) & 0x7FFFFF;
+/**
+    @brief Reads the next four bytes of `data`
+    as a wl_fixed value.
+*/
+wl_fixed read_wl_fixed(const void* data);
 
-    if (bit_data >> 31) {
-        integer_part = -((1 << 23) - integer_part);
-    }
+/**
+    @brief Writes a wl_int value into the next
+    four bytes of `data`.
+*/
+void from_int(const wl_int int_v, void* data);
 
-    return integer_part + static_cast<float>(bit_data & 0xFF) / UINT8_MAX;
-}
+/**
+    @brief Writes a wl_uint value into the next
+    four bytes of `data`.
+*/
+void from_uint(const wl_uint uint, void* data);
 
-template<class T>
-void from_wl(const T val, void* data) {
-    memcpy(data, reinterpret_cast<const char*>(&val), WL_NEW_ID_SIZE);
-}
+/**
+    @brief Writes a wl_object value into the next
+    four bytes of `data`.
+*/
+void from_object(const wl_object object, void* data);
 
-inline void from_int(const wl_int sint, void* data) {
-    from_wl(sint, data);
-}
+/**
+    @brief Writes a wl_new_id value into the next
+    four bytes of `data`.
+*/
+void from_new_id(const wl_new_id new_id, void* data);
 
-inline void from_uint(const wl_uint uint, void* data) {
-    from_wl(uint, data);
-}
+/**
+    @brief Rounds up an address to the nearest multiple
+    of four.
+*/
+wl_uint wl_align(const wl_uint addr);
 
-inline void from_object(const wl_object object, void* data) {
-    from_wl(object, data);
-}
-
-inline void from_new_id(const wl_new_id new_id, void* data) {
-    from_wl(new_id, data);
-}
-
-inline uintmax_t wl_align(const uintmax_t addr) {
-    return (addr - 1) - ((addr - 1) % WL_WORD_SIZE) + WL_WORD_SIZE;
-}
-
-inline uintmax_t wl_align(const char* str) {
-    return wl_align(strlen(str) + 1);
-}
-
-inline bool is_aligned(const wl_uint addr) {
-    return addr % WL_WORD_SIZE == 0;
-}
+/**
+    @brief Checks whether an address is a multiple of
+    `WL_WORD_SIZE`.
+*/
+bool is_aligned(const wl_uint addr);
 
 #define NULL_OBJ_ID 0
 #define DISPLAY_OBJ_ID 1

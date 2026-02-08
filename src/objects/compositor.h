@@ -16,7 +16,7 @@ class wl_compositor {
     }
 
     wl_surface* create_surface(const wl_fd_t socket) {
-        wl_surface* surface = new wl_surface(wl_id_assigner.get_id());
+        wl_surface* surface = new wl_surface(wl_id_assigner.request_id());
         wl_id_map.create(*surface);
 
         wl_message client_msg(id, 0, 1);

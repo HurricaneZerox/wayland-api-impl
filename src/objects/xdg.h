@@ -156,7 +156,7 @@ class xdg_surface : public wl_obj {
 
     xdg_toplevel& get_toplevel(const wl_fd_t socket) {
         this->socket = socket;
-        xdg_toplevel* toplevel = new xdg_toplevel(wl_id_assigner.get_id());
+        xdg_toplevel* toplevel = new xdg_toplevel(wl_id_assigner.request_id());
         wl_id_map.create(*toplevel);
 
         wl_message client_msg(id, 1, 1);
@@ -207,7 +207,7 @@ class xdg_wm_base : public wl_obj {
     void destroy();
 
     xdg_positioner& create_positioner() {
-        xdg_positioner* positioner = new xdg_positioner(wl_id_assigner.get_id(), socket);
+        xdg_positioner* positioner = new xdg_positioner(wl_id_assigner.request_id(), socket);
         wl_id_map.create(*positioner);
 
         wl_message client_msg(id, CREATE_POSITIONER_OPCODE, 1);
@@ -219,7 +219,7 @@ class xdg_wm_base : public wl_obj {
     }
 
     xdg_surface& get_xdg_surface(const wl_fd_t socket, wl_surface& surface) {
-        xdg_surface* x_surface = new xdg_surface(wl_id_assigner.get_id());
+        xdg_surface* x_surface = new xdg_surface(wl_id_assigner.request_id());
         wl_id_map.create(*x_surface);
 
         wl_message client_msg(id, GET_XDG_SURFACE_OPCODE, 2);

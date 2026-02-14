@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -5,6 +6,7 @@
 
 #include <stdexcept>
 #include <sys/syscall.h>
+#include <thread>
 #include <unistd.h>
 #include <syscall.h>
 #include <sys/mman.h>
@@ -12,8 +14,12 @@
 #include <fcntl.h>
 
 #include "objects/buffer.h"
+#include "objects/linux-dma-buf.h"
+#include "objects/output.h"
 #include "objects/surface.h"
+#include "wl_utils/wl_array.h"
 #include "wl_utils/wl_enums.h"
+#include "wl_utils/wl_id.h"
 #include "wl_utils/wl_types.h"
 #include "wl_utils/wl_string.h"
 #include "wl_utils/wl_state.h"
@@ -166,8 +172,6 @@ struct Framebuffer {
 
 Framebuffer framebuffer;
 
-bool has_configured = false;
-bool has_resized_buffer = false;
 bool should_close = false;
 
 wl_int screen_width = 200;
@@ -250,9 +254,12 @@ struct wl_keyboard::listener wl_keyboard_listener {
 };
 
 xdg_wm_base* wm_base;
+zwp::linux_dmabuf::dmabuf* dmabuf;
+wl::output* output;
 
 void on_global_registered(wl_registry& registry, const wl_uint name, const wl_string& interface, const wl_uint version) {
-    if (interface.compare("wl_compositor") == 0) {
+    
+	if (interface.compare("wl_compositor") == 0) {
         const wl_new_id id = wl_id_assigner.request_id();
         registry.bind(name, interface, version, id);
         compositor = wl_compositor(id);
@@ -273,7 +280,17 @@ void on_global_registered(wl_registry& registry, const wl_uint name, const wl_st
         wl_id_map.create(*seat);
     } else if (interface.compare("xdg_toplvel_icon_manager_v1") == 0) {
         
-    }
+    } else if (interface.compare("zwp_linux_dmabuf_v1") == 0) {
+		const wl_new_id id = wl_id_assigner.request_id();
+		registry.bind(name, interface, version, id);
+		dmabuf = new zwp::linux_dmabuf::dmabuf(id);
+		wl_id_map.create(*dmabuf);
+	} else if (interface.compare("wl_output") == 0) {
+		const wl_new_id id = wl_id_assigner.request_id();
+		registry.bind(name, interface, version, id);
+		output = new wl::output(id);
+		wl_id_map.create(*output);
+	}
 }
 
 struct wl_registry::listener registry_listener {
@@ -285,6 +302,8 @@ struct wl_shm::listener wl_shm_listener {
         std::cout << format_to_str((Format)format) << '\n';
     },
 };
+
+#include <GLES3/gl3.h>
 
 int main() {
 
@@ -317,7 +336,7 @@ int main() {
     framebuffer = Framebuffer(200, 200);
 
     while (!should_close) {
-        display.roundtrip();
+		display.roundtrip();
     }
 
     return 0;

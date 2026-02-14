@@ -9,6 +9,7 @@
 #include <string>
 
 #include "../lumber.h"
+#include "wl_array.h"
 #include "wl_types.h"
 #include "wl_string.h"
 
@@ -61,6 +62,9 @@ class wl_message::reader {
     wl_object read_object();
 
     wl_string read_string();
+
+	template<class T>
+	wl_array<T> read_array();
 
 };
 

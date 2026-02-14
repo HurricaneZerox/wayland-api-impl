@@ -1,7 +1,15 @@
 #pragma once
 
 #include "wl_types.h"
+#include <string>
 
+/**
+	@brief Specialised version of a string
+	for the Wayland API.
+
+	Provides methods for converting to and
+	from c-style strings.
+*/
 class wl_string {
 
     public:
@@ -29,6 +37,15 @@ class wl_string {
 
     wl_string(const size_type o_size, const char* const data);
 
+	/**
+		@brief Reads from the Wayland wire format
+		into a wl_string.
+
+		Requires at least 4 bytes of data to parse
+		correctly, and then a further N bytes of
+		data given the wl_uint value of that first
+		word.
+	*/
     wl_string(const char* data);
 
     /**
@@ -52,12 +69,29 @@ class wl_string {
 
     bool empty() const noexcept;
 
+	/**
+		@brief Returns the number of characters
+		in the string.
+	*/
     wl_uint size() const noexcept;
 
+	/**W tak
+		@brief Returns the number of characters
+		in the string.
+	*/
     wl_uint length() const noexcept;
 
+	/**
+		@brief Returns the number of words taken
+		up by the string with correct alignment.
+	*/
     wl_uint word_size() const noexcept;
 
+	/**
+		@brief Returns the size of the wl_string
+		as it is represented in the Wayland
+		wire format.
+	*/
     wl_uint serialised_size() const noexcept;
 
     int compare(const char* other) const noexcept;

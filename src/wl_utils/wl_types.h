@@ -12,6 +12,7 @@ using wl_uint = uint32_t;
 using wl_fixed = float;
 using wl_object = uint32_t;
 using wl_new_id = uint32_t;
+using wl_dev_t = uint32_t;
 
 /**
     Special case types
@@ -23,6 +24,7 @@ using wl_new_id = uint32_t;
 using wl_uint16 = uint16_t;
 using wl_opcode_t = wl_uint16;
 using wl_fd_t = wl_uint;
+using wl_opcode_t = wl_uint16;
 
 #define WL_INT_SIZE sizeof(wl_int)
 #define WL_UINT_SIZE sizeof(wl_uint)

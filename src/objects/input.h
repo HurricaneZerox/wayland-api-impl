@@ -53,7 +53,22 @@ class wl_keyboard : public wl_obj {
         }
 
         if (opcode == EV_KEYMAP_OPCODE) {
-            //std::cout << "KEYMAP\n";
+            
+			const keymap_format format = static_cast<keymap_format>(reader.read_uint());
+			const wl_uint size = reader.read_uint();
+
+			if (format == keymap_format::no_keymap) {
+				std::cout << "keymap_format::no_keymap\n";
+			} else if (format == keymap_format::xkb_v1) {
+				std::cout << "keymap_format::xkb_v1\n";
+			} else {
+				lumber::err("[Wayland::ERR]: Invalid keymap format\n");
+				exit(1);
+			}
+
+			std::cout << "wl::keyboard::keymap::fd: " << 0 << '\n'; 
+			std::cout << "wl::keyboard::keymap::size: " << size << '\n'; 
+
         } else if (opcode == EV_ENTER_OPCODE) {
             //std::cout << "ENTER\n";
         } else if (opcode == EV_LEAVE_OPCODE) {
@@ -69,7 +84,9 @@ class wl_keyboard : public wl_obj {
             //std::cout << "MOD\n";
         } else if (opcode == EV_REPEAT_INFO_OPCODE) {
             //std::cout << "REPEAT\n";
-        }
+        } else {
+			lumber::warn("[Wayland::WARN]: Unimplemented event opcode for wl::keyboard.");
+		}
     }
 };
 

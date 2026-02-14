@@ -1,5 +1,6 @@
 #pragma once
 
+#include <asm-generic/ioctls.h>
 #include <filesystem>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -9,6 +10,8 @@
 #include "../wl_utils/wl_state.h"
 
 #include "../lumber.h"
+
+#include <sys/ioctl.h>
 
 
 
@@ -157,6 +160,20 @@ class wl_display {
     size_t dispatch() {
         return 0;
     }
+
+	void flush() {
+		char buf[1];
+		int count = recv(socket, buf, sizeof(buf), MSG_PEEK);
+
+		std::cout << count << '\n';
+
+		if (count > 0) {
+			read_queues();
+		}
+
+		dispatch_pending();
+	}
+
 
     void roundtrip() {
         dispatch_pending();
